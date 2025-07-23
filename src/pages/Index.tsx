@@ -5,7 +5,7 @@ import { NotificationModal } from '../components/NotificationModal';
 import { PaymentModal } from '../components/PaymentModal';
 import { OrderSummary } from '../components/OrderSummary';
 import { InputPanel } from '../components/InputPanel';
-import { mockProducts } from '../data/mockProducts';
+import { supabase } from '../lib/supabase';
 import { Comanda, ComandaItem, Product } from '../types/types';
 import { toast } from 'sonner';
 
@@ -13,46 +13,61 @@ export default function Index() {
   const [activeComanda, setActiveComanda] = useState<Comanda | null>(null);
   const [comandaCodeInput, setComandaCodeInput] = useState('');
   const [notification, setNotification] = useState({ message: '', type: 'info' as 'info' | 'error' | 'success' });
-  const [produtos, setProdutos] = useState<Product[]>(mockProducts);
+  const [produtos, setProdutos] = useState<Product[]>([]);
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [comandas, setComandas] = useState<Comanda[]>([]);
-  const [nextComandaId, setNextComandaId] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
 
   const showNotification = (message: string, type: 'info' | 'error' | 'success' = 'info') => {
     setNotification({ message, type });
     toast[type](message);
   };
 
-  const reloadActiveComanda = (comandaId: number) => {
-    const comanda = comandas.find(c => c.id === comandaId);
-    if (comanda) {
-      setActiveComanda(comanda);
+  const fetchProducts = useCallback(async () => {
+    const { data, error } = await supabase.from('produtos').select('*');
+    if (error) {
+      console.error('Erro ao carregar produtos:', error);
+      showNotification('Erro ao carregar produtos.', 'error');
+    } else {
+      setProdutos(data || []);
+    }
+    setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const reloadActiveComanda = async (comandaId: number) => {
+    const { data, error } = await supabase
+      .from('comandas')
+      .select('*, comanda_itens(*, produtos(*))')
+      .eq('id', comandaId)
+      .single();
+    
+    if (error) {
+      console.error('Erro ao recarregar comanda:', error);
+      showNotification('Erro ao recarregar a comanda.', 'error');
+      return;
+    }
+    setActiveComanda(data);
+  };
+
+  const handleAddItem = async (itemData: Omit<ComandaItem, 'id'>) => {
+    if (!activeComanda) return;
+    
+    const { error } = await supabase.from('comanda_itens').insert(itemData);
+    if (error) {
+      console.error('Erro ao adicionar item:', error);
+      showNotification('Erro ao adicionar item.', 'error');
+    } else {
+      await reloadActiveComanda(activeComanda.id);
     }
   };
 
-  const handleAddItem = (itemData: Omit<ComandaItem, 'id'>) => {
+  const handleAddProduto = async (produto: Product) => {
     if (!activeComanda) return;
     
-    const newItem: ComandaItem = {
-      ...itemData,
-      id: Date.now() + Math.random()
-    };
-
-    const updatedComandas = comandas.map(c => 
-      c.id === activeComanda.id 
-        ? { ...c, comanda_itens: [...c.comanda_itens, newItem] }
-        : c
-    );
-    
-    setComandas(updatedComandas);
-    reloadActiveComanda(activeComanda.id);
-  };
-
-  const handleAddProduto = (produto: Product) => {
-    if (!activeComanda) return;
-    
-    handleAddItem({
+    await handleAddItem({
       comanda_id: activeComanda.id,
       produto_id: produto.id,
       quantidade: 1,
@@ -63,10 +78,10 @@ export default function Index() {
     showNotification(`${produto.nome} adicionado!`, 'success');
   };
 
-  const handleAddPratoPorPeso = (valor: number) => {
+  const handleAddPratoPorPeso = async (valor: number) => {
     if (!activeComanda) return;
     
-    handleAddItem({
+    await handleAddItem({
       comanda_id: activeComanda.id,
       descricao: 'Prato por Quilo',
       quantidade: 1,
@@ -77,53 +92,64 @@ export default function Index() {
     showNotification(`Prato de ${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} adicionado!`, 'success');
   };
 
-  const handleRemoveItem = (comandaItemId: number) => {
+  const handleRemoveItem = async (comandaItemId: number) => {
     if (!activeComanda) return;
     
-    const updatedComandas = comandas.map(c => 
-      c.id === activeComanda.id 
-        ? { ...c, comanda_itens: c.comanda_itens.filter(item => item.id !== comandaItemId) }
-        : c
-    );
-    
-    setComandas(updatedComandas);
-    reloadActiveComanda(activeComanda.id);
-    showNotification('Item removido.', 'info');
+    const { error } = await supabase.from('comanda_itens').delete().eq('id', comandaItemId);
+    if (error) {
+      console.error('Erro ao remover item:', error);
+      showNotification('Erro ao remover item.', 'error');
+    } else {
+      showNotification('Item removido.', 'info');
+      await reloadActiveComanda(activeComanda.id);
+    }
   };
 
-  const handleClearComanda = () => {
+  const handleClearComanda = async () => {
     if (!activeComanda) return;
     
-    const updatedComandas = comandas.map(c => 
-      c.id === activeComanda.id 
-        ? { ...c, comanda_itens: [] }
-        : c
-    );
-    
-    setComandas(updatedComandas);
-    reloadActiveComanda(activeComanda.id);
-    showNotification("Itens da comanda removidos.", 'info');
+    const { error } = await supabase.from('comanda_itens').delete().eq('comanda_id', activeComanda.id);
+    if (error) {
+      console.error('Erro ao limpar itens:', error);
+      showNotification('Erro ao limpar itens.', 'error');
+    } else {
+      showNotification("Itens da comanda removidos.", 'info');
+      await reloadActiveComanda(activeComanda.id);
+    }
   };
 
-  const handleActivateComanda = (e: React.KeyboardEvent) => {
+  const handleActivateComanda = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && comandaCodeInput.trim() !== '') {
       setIsLoading(true);
       const comandaId = comandaCodeInput.trim();
       
-      let comanda = comandas.find(c => c.identificador_cliente === comandaId && c.status === 'aberta');
+      let { data: comanda, error } = await supabase
+        .from('comandas')
+        .select('*, comanda_itens(*, produtos(*))')
+        .eq('identificador_cliente', comandaId)
+        .eq('status', 'aberta')
+        .maybeSingle();
+
+      if (error) {
+        console.error('Erro ao buscar comanda:', error);
+        showNotification('Erro ao buscar comanda.', 'error');
+        setIsLoading(false);
+        return;
+      }
       
       if (!comanda) {
-        const newComanda: Comanda = {
-          id: nextComandaId,
-          identificador_cliente: comandaId,
-          status: 'aberta',
-          comanda_itens: [],
-          total: 0,
-          data_pagamento: null
-        };
+        const { data: newComanda, error: createError } = await supabase
+          .from('comandas')
+          .insert({ identificador_cliente: comandaId, status: 'aberta' })
+          .select('*, comanda_itens(*, produtos(*))')
+          .single();
         
-        setComandas([...comandas, newComanda]);
-        setNextComandaId(nextComandaId + 1);
+        if (createError) {
+          console.error('Erro ao criar comanda:', createError);
+          showNotification('Erro ao criar nova comanda.', 'error');
+          setIsLoading(false);
+          return;
+        }
         comanda = newComanda;
         showNotification(`Nova comanda #${comandaId} criada!`, 'success');
       } else {
@@ -136,24 +162,37 @@ export default function Index() {
     }
   };
 
-  const handleConfirmPayment = (total: number) => {
+  const handleConfirmPayment = async (total: number) => {
     if (!activeComanda) return;
     
-    const updatedComandas = comandas.map(c => 
-      c.id === activeComanda.id 
-        ? { ...c, status: 'paga' as const, total, data_pagamento: new Date().toISOString() }
-        : c
-    );
-    
-    setComandas(updatedComandas);
-    showNotification(`Comanda #${activeComanda.identificador_cliente} paga com sucesso!`, 'success');
-    setActiveComanda(null);
-    setPaymentModalOpen(false);
+    const { error } = await supabase
+      .from('comandas')
+      .update({ status: 'paga', total: total, data_pagamento: new Date().toISOString() })
+      .eq('id', activeComanda.id);
+
+    if (error) {
+      console.error('Erro ao finalizar pagamento:', error);
+      showNotification('Erro ao finalizar pagamento.', 'error');
+    } else {
+      showNotification(`Comanda #${activeComanda.identificador_cliente} paga com sucesso!`, 'success');
+      setActiveComanda(null);
+      setPaymentModalOpen(false);
+    }
   };
 
-  const handleGenerateReport = () => {
-    const vendas = comandas.filter(c => c.status === 'paga');
-    
+  const handleGenerateReport = async () => {
+    const { data: vendas, error } = await supabase
+      .from('comandas')
+      .select('*')
+      .eq('status', 'paga')
+      .order('data_pagamento', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao gerar relatório:', error);
+      showNotification('Erro ao gerar relatório.', 'error');
+      return;
+    }
+
     const reportWindow = window.open('', '_blank');
     if (!reportWindow) return;
     
@@ -176,7 +215,7 @@ export default function Index() {
           <h1>🍽️ Relatório de Vendas - Restaurante por Quilo</h1>
           <p><strong>Gerado em:</strong> ${new Date().toLocaleString('pt-BR')}</p>
           <div class="summary">
-            <p><strong>Total de Comandas Pagas:</strong> ${vendas.length}</p>
+            <p><strong>Total de Comandas Pagas:</strong> ${vendas?.length || 0}</p>
           </div>
           <table>
             <thead>
@@ -190,7 +229,7 @@ export default function Index() {
     `;
     
     let totalGeral = 0;
-    vendas.forEach(venda => {
+    vendas?.forEach(venda => {
       totalGeral += venda.total;
       reportHTML += `
         <tr>
