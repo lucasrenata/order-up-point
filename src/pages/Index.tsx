@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Barcode, FileText } from 'lucide-react';
 import { NotificationModal } from '../components/NotificationModal';
@@ -29,6 +28,7 @@ export default function Index() {
       showNotification('Erro ao carregar produtos.', 'error');
     } else {
       setProdutos(data || []);
+      console.log('Produtos carregados:', data);
     }
     setIsLoading(false);
   }, []);
@@ -40,7 +40,18 @@ export default function Index() {
   const reloadActiveComanda = async (comandaId: number) => {
     const { data, error } = await supabase
       .from('comandas')
-      .select('*, comanda_itens(*, produtos(*))')
+      .select(`
+        *,
+        comanda_itens (
+          id,
+          created_at,
+          comanda_id,
+          produto_id,
+          quantidade,
+          preco_unitario,
+          descricao
+        )
+      `)
       .eq('id', comandaId)
       .single();
     
@@ -49,17 +60,38 @@ export default function Index() {
       showNotification('Erro ao recarregar a comanda.', 'error');
       return;
     }
-    setActiveComanda(data);
+    
+    // Enriquecer os itens com dados dos produtos
+    const enrichedComanda = {
+      ...data,
+      comanda_itens: data.comanda_itens || []
+    };
+    
+    setActiveComanda(enrichedComanda);
+    console.log('Comanda recarregada:', enrichedComanda);
   };
 
-  const handleAddItem = async (itemData: Omit<ComandaItem, 'id'>) => {
+  const handleAddItem = async (itemData: Omit<ComandaItem, 'id' | 'created_at'>) => {
     if (!activeComanda) return;
     
-    const { error } = await supabase.from('comanda_itens').insert(itemData);
+    console.log('Inserindo item:', itemData);
+    
+    const { data, error } = await supabase
+      .from('comanda_itens')
+      .insert({
+        comanda_id: itemData.comanda_id,
+        produto_id: itemData.produto_id,
+        quantidade: itemData.quantidade,
+        preco_unitario: itemData.preco_unitario,
+        descricao: itemData.descricao
+      })
+      .select();
+    
     if (error) {
       console.error('Erro ao adicionar item:', error);
       showNotification('Erro ao adicionar item.', 'error');
     } else {
+      console.log('Item adicionado com sucesso:', data);
       await reloadActiveComanda(activeComanda.id);
     }
   };
@@ -72,8 +104,7 @@ export default function Index() {
       produto_id: produto.id,
       quantidade: 1,
       preco_unitario: produto.preco,
-      descricao: produto.nome,
-      produtos: produto
+      descricao: produto.nome
     });
     showNotification(`${produto.nome} adicionado!`, 'success');
   };
@@ -83,11 +114,10 @@ export default function Index() {
     
     await handleAddItem({
       comanda_id: activeComanda.id,
-      descricao: 'Prato por Quilo',
+      produto_id: null,
       quantidade: 1,
       preco_unitario: valor,
-      produto_id: null,
-      produtos: null
+      descricao: 'Prato por Quilo'
     });
     showNotification(`Prato de ${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} adicionado!`, 'success');
   };
@@ -123,9 +153,22 @@ export default function Index() {
       setIsLoading(true);
       const comandaId = comandaCodeInput.trim();
       
+      console.log('Buscando comanda:', comandaId);
+      
       let { data: comanda, error } = await supabase
         .from('comandas')
-        .select('*, comanda_itens(*, produtos(*))')
+        .select(`
+          *,
+          comanda_itens (
+            id,
+            created_at,
+            comanda_id,
+            produto_id,
+            quantidade,
+            preco_unitario,
+            descricao
+          )
+        `)
         .eq('identificador_cliente', comandaId)
         .eq('status', 'aberta')
         .maybeSingle();
@@ -138,10 +181,25 @@ export default function Index() {
       }
       
       if (!comanda) {
+        console.log('Comanda não encontrada, criando nova...');
         const { data: newComanda, error: createError } = await supabase
           .from('comandas')
-          .insert({ identificador_cliente: comandaId, status: 'aberta' })
-          .select('*, comanda_itens(*, produtos(*))')
+          .insert({ 
+            identificador_cliente: comandaId, 
+            status: 'aberta' 
+          })
+          .select(`
+            *,
+            comanda_itens (
+              id,
+              created_at,
+              comanda_id,
+              produto_id,
+              quantidade,
+              preco_unitario,
+              descricao
+            )
+          `)
           .single();
         
         if (createError) {
@@ -150,12 +208,21 @@ export default function Index() {
           setIsLoading(false);
           return;
         }
-        comanda = newComanda;
+        
+        comanda = {
+          ...newComanda,
+          comanda_itens: newComanda.comanda_itens || []
+        };
         showNotification(`Nova comanda #${comandaId} criada!`, 'success');
       } else {
+        comanda = {
+          ...comanda,
+          comanda_itens: comanda.comanda_itens || []
+        };
         showNotification(`Comanda #${comandaId} carregada!`, 'info');
       }
 
+      console.log('Comanda ativa:', comanda);
       setActiveComanda(comanda);
       setComandaCodeInput('');
       setIsLoading(false);
@@ -167,7 +234,11 @@ export default function Index() {
     
     const { error } = await supabase
       .from('comandas')
-      .update({ status: 'paga', total: total, data_pagamento: new Date().toISOString() })
+      .update({ 
+        status: 'paga', 
+        total: total, 
+        data_pagamento: new Date().toISOString() 
+      })
       .eq('id', activeComanda.id);
 
     if (error) {
@@ -230,12 +301,12 @@ export default function Index() {
     
     let totalGeral = 0;
     vendas?.forEach(venda => {
-      totalGeral += venda.total;
+      totalGeral += venda.total || 0;
       reportHTML += `
         <tr>
           <td>#${venda.identificador_cliente}</td>
           <td>${new Date(venda.data_pagamento!).toLocaleString('pt-BR')}</td>
-          <td>${venda.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+          <td>${(venda.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
         </tr>
       `;
     });
@@ -317,7 +388,8 @@ export default function Index() {
               comanda={activeComanda} 
               onRemoveItem={handleRemoveItem} 
               onClearComanda={handleClearComanda} 
-              onPagar={() => setPaymentModalOpen(true)} 
+              onPagar={() => setPaymentModalOpen(true)}
+              produtos={produtos}
             />
           </div>
         </div>

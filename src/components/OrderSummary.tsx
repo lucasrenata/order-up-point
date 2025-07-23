@@ -2,16 +2,23 @@
 import React from 'react';
 import { DollarSign, X, UtensilsCrossed, Receipt } from 'lucide-react';
 import { OrderItem } from './OrderItem';
-import { Comanda } from '../types/types';
+import { Comanda, Product } from '../types/types';
 
 interface OrderSummaryProps {
   comanda: Comanda | null;
   onRemoveItem: (id: number) => void;
   onClearComanda: () => void;
   onPagar: () => void;
+  produtos?: Product[];
 }
 
-export const OrderSummary: React.FC<OrderSummaryProps> = ({ comanda, onRemoveItem, onClearComanda, onPagar }) => {
+export const OrderSummary: React.FC<OrderSummaryProps> = ({ 
+  comanda, 
+  onRemoveItem, 
+  onClearComanda, 
+  onPagar,
+  produtos = []
+}) => {
   if (!comanda) {
     return (
       <div className="bg-white rounded-2xl shadow-lg flex flex-col h-full items-center justify-center text-center text-gray-400 p-8">
@@ -63,7 +70,12 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({ comanda, onRemoveIte
         ) : (
           <div className="py-2">
             {comanda.comanda_itens.map(item => (
-              <OrderItem key={item.id} item={item} onRemove={onRemoveItem} />
+              <OrderItem 
+                key={item.id} 
+                item={item} 
+                onRemove={onRemoveItem} 
+                produtos={produtos}
+              />
             ))}
           </div>
         )}
