@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Barcode, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { NotificationModal } from '../components/NotificationModal';
 import { PaymentModal } from '../components/PaymentModal';
 import { OrderSummary } from '../components/OrderSummary';
@@ -9,6 +10,7 @@ import { Comanda, ComandaItem, Product } from '../types/types';
 import { toast } from 'sonner';
 
 export default function Index() {
+  const navigate = useNavigate();
   const [activeComanda, setActiveComanda] = useState<Comanda | null>(null);
   const [comandaCodeInput, setComandaCodeInput] = useState('');
   const [notification, setNotification] = useState({ message: '', type: 'info' as 'info' | 'error' | 'success' });
@@ -251,78 +253,8 @@ export default function Index() {
     }
   };
 
-  const handleGenerateReport = async () => {
-    const { data: vendas, error } = await supabase
-      .from('comandas')
-      .select('*')
-      .eq('status', 'paga')
-      .order('data_pagamento', { ascending: false });
-
-    if (error) {
-      console.error('Erro ao gerar relatório:', error);
-      showNotification('Erro ao gerar relatório.', 'error');
-      return;
-    }
-
-    const reportWindow = window.open('', '_blank');
-    if (!reportWindow) return;
-    
-    let reportHTML = `
-      <html>
-        <head>
-          <title>Relatório de Vendas</title>
-          <style>
-            body { font-family: sans-serif; padding: 20px; }
-            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-            th { background-color: #f2f2f2; font-weight: bold; }
-            .total { font-weight: bold; margin-top: 20px; text-align: right; font-size: 1.2em; color: #059669; }
-            h1, p { text-align: center; }
-            h1 { color: #1f2937; }
-            .summary { background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; }
-          </style>
-        </head>
-        <body>
-          <h1>🍽️ Relatório de Vendas - Restaurante por Quilo</h1>
-          <p><strong>Gerado em:</strong> ${new Date().toLocaleString('pt-BR')}</p>
-          <div class="summary">
-            <p><strong>Total de Comandas Pagas:</strong> ${vendas?.length || 0}</p>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Comanda</th>
-                <th>Data/Hora Pagamento</th>
-                <th>Total Pago</th>
-              </tr>
-            </thead>
-            <tbody>
-    `;
-    
-    let totalGeral = 0;
-    vendas?.forEach(venda => {
-      totalGeral += venda.total || 0;
-      reportHTML += `
-        <tr>
-          <td>#${venda.identificador_cliente}</td>
-          <td>${new Date(venda.data_pagamento!).toLocaleString('pt-BR')}</td>
-          <td>${(venda.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-        </tr>
-      `;
-    });
-    
-    reportHTML += `
-            </tbody>
-          </table>
-          <div class="total">
-            💰 Total Geral: ${totalGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </div>
-        </body>
-      </html>
-    `;
-    
-    reportWindow.document.write(reportHTML);
-    reportWindow.document.close();
+  const handleGenerateReport = () => {
+    navigate('/relatorio');
   };
 
   return (
