@@ -131,8 +131,8 @@ export const generatePDFReport = async (data: ReportData, selectedDate: string) 
     yPos += Math.max(6, splitText.length * 4);
   });
   
-  // Rodapé
-  const pageCount = pdf.internal.getNumberOfPages();
+  // Rodapé - usar a propriedade getCurrentPageInfo() para obter informações da página atual
+  const pageCount = (pdf as any).internal.pages.length - 1; // Subtract 1 because pages array includes empty first element
   for (let i = 1; i <= pageCount; i++) {
     pdf.setPage(i);
     pdf.setFontSize(8);
