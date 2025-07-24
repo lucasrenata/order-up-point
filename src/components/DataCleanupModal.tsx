@@ -20,19 +20,12 @@ import {
 } from './ui/alert-dialog';
 import { Button } from './ui/button';
 import { useDataCleanup } from '../hooks/useDataCleanup';
+import { formatBrazilianDate } from '../utils/dateUtils';
 
 export const DataCleanupModal: React.FC = () => {
   const { dateSummaries, isLoading, isDeleting, deleteComandasByDate } = useDataCleanup();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
 
   const handleDeleteConfirm = async () => {
     if (selectedDate) {
@@ -69,7 +62,7 @@ export const DataCleanupModal: React.FC = () => {
               </div>
               <p className="text-sm text-yellow-700">
                 Esta ação irá deletar permanentemente todas as comandas pagas das datas selecionadas. 
-                Esta operação não pode ser desfeita.
+                Esta operação não pode ser desfeita. As datas mostradas estão no horário brasileiro.
               </p>
             </div>
 
@@ -100,7 +93,7 @@ export const DataCleanupModal: React.FC = () => {
                       </div>
                       <div>
                         <p className="font-semibold text-gray-800">
-                          {formatDate(summary.date)}
+                          {formatBrazilianDate(summary.date)}
                         </p>
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           <span className="flex items-center gap-1">
@@ -144,7 +137,7 @@ export const DataCleanupModal: React.FC = () => {
             </AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja deletar todas as comandas pagas do dia{' '}
-              <strong>{selectedDate ? formatDate(selectedDate) : ''}</strong>?
+              <strong>{selectedDate ? formatBrazilianDate(selectedDate) : ''}</strong>?
               <br />
               <br />
               Esta ação não pode ser desfeita e removerá permanentemente:
@@ -152,6 +145,9 @@ export const DataCleanupModal: React.FC = () => {
               • Todas as comandas pagas desta data
               <br />
               • Todos os itens relacionados a essas comandas
+              <br />
+              <br />
+              <em>Nota: As datas são baseadas no horário brasileiro (UTC-3).</em>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

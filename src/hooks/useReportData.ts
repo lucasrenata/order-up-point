@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { Comanda, Product } from '../types/types';
+import { getBrazilianDateRange } from '../utils/dateUtils';
 
 interface ReportData {
   comandas: Comanda[];
@@ -23,9 +24,12 @@ export const useReportData = (selectedDate: string) => {
     setError(null);
     
     try {
-      console.log('🔍 Buscando dados para a data:', date);
+      console.log('🔍 Buscando dados para a data brasileira:', date);
       
-      // Buscar comandas pagas usando filtro de data local brasileiro
+      const { start, end } = getBrazilianDateRange(date);
+      console.log(`🕐 Intervalo de busca: ${start} até ${end}`);
+      
+      // Buscar comandas pagas usando filtro de data brasileira
       const { data: comandas, error: comandasError } = await supabase
         .from('comandas')
         .select(`
@@ -42,8 +46,8 @@ export const useReportData = (selectedDate: string) => {
         `)
         .eq('status', 'paga')
         .not('data_pagamento', 'is', null)
-        .gte('data_pagamento', `${date}T00:00:00-03:00`)
-        .lte('data_pagamento', `${date}T23:59:59-03:00`)
+        .gte('data_pagamento', start)
+        .lte('data_pagamento', end)
         .order('data_pagamento', { ascending: false });
 
       if (comandasError) {
@@ -53,13 +57,23 @@ export const useReportData = (selectedDate: string) => {
 
       console.log('✅ Comandas encontradas:', comandas?.length || 0);
       
-      // Log detalhado das comandas
+      // Log detalhado das comandas com horário brasileiro
       comandas?.forEach((comanda, index) => {
+        const brazilianTime = new Date(comanda.data_pagamento).toLocaleString('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
         console.log(`📋 Comanda ${index + 1}:`, {
           id: comanda.id,
           identificador: comanda.identificador_cliente,
           total: comanda.total,
-          data_pagamento: comanda.data_pagamento,
+          data_pagamento_utc: comanda.data_pagamento,
+          data_pagamento_br: brazilianTime,
           itens: comanda.comanda_itens?.length || 0
         });
       });
@@ -91,7 +105,7 @@ export const useReportData = (selectedDate: string) => {
       
       const ticketMedio = comandas?.length ? totalVendas / comandas.length : 0;
 
-      console.log('📊 Estatísticas calculadas:');
+      console.log('📊 Estatísticas calculadas para', date, '(horário brasileiro):');
       console.log('💰 Total de vendas:', totalVendas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
       console.log('📦 Total de itens:', totalItens);
       console.log('🎯 Ticket médio:', ticketMedio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));

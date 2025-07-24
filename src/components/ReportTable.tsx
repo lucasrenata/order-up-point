@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Clock, User, Receipt } from 'lucide-react';
+import { formatBrazilianDateTime } from '../utils/dateUtils';
 
 interface ReportTableProps {
   data: {
@@ -10,16 +11,6 @@ interface ReportTableProps {
 }
 
 export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   const getProductName = (produtoId: number | null) => {
     if (!produtoId) return 'Prato por Quilo';
     const produto = data.produtos.find(p => p.id === produtoId);
@@ -54,7 +45,7 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <div className="flex items-center gap-2">
                   <Clock size={16} />
-                  Data/Hora
+                  Data/Hora (Horário Brasileiro)
                 </div>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -84,7 +75,7 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {formatDateTime(comanda.data_pagamento)}
+                  {formatBrazilianDateTime(comanda.data_pagamento)}
                 </td>
                 <td className="px-6 py-4">
                   <div className="space-y-2">
