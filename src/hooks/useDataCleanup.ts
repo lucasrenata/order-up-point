@@ -16,10 +16,60 @@ interface DateSummary {
   comandas: any[];
 }
 
+interface AllPaidSummary {
+  count: number;
+  totalValue: number;
+  comandas: any[];
+}
+
+type CleanupMode = 'by-date' | 'all-paid';
+
 export const useDataCleanup = () => {
   const [dateSummaries, setDateSummaries] = useState<DateSummary[]>([]);
+  const [allPaidSummary, setAllPaidSummary] = useState<AllPaidSummary>({ count: 0, totalValue: 0, comandas: [] });
+  const [cleanupMode, setCleanupMode] = useState<CleanupMode>('by-date');
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const fetchAllPaidComandas = async () => {
+    setIsLoading(true);
+    
+    try {
+      console.log('🔍 ===== BUSCANDO TODAS AS COMANDAS PAGAS =====');
+      
+      const { data: comandas, error } = await supabase
+        .from('comandas')
+        .select('*')
+        .eq('status', 'paga')
+        .not('data_pagamento', 'is', null)
+        .order('data_pagamento', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erro ao buscar comandas pagas:', error);
+        throw error;
+      }
+
+      console.log('📊 Total de comandas pagas encontradas:', comandas?.length || 0);
+
+      const totalValue = comandas?.reduce((sum, comanda) => sum + (comanda.total || 0), 0) || 0;
+
+      const summary: AllPaidSummary = {
+        count: comandas?.length || 0,
+        totalValue,
+        comandas: comandas || []
+      };
+
+      console.log('💰 Valor total das comandas pagas:', totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+      console.log('✅ ===== BUSCA DE COMANDAS PAGAS CONCLUÍDA =====');
+
+      setAllPaidSummary(summary);
+    } catch (error) {
+      console.error('❌ Erro ao buscar comandas pagas:', error);
+      toast.error('Erro ao carregar comandas pagas');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchDateSummaries = async () => {
     setIsLoading(true);
@@ -41,11 +91,9 @@ export const useDataCleanup = () => {
 
       console.log('📊 Comandas encontradas para análise:', comandas?.length || 0);
 
-      // Obter data atual brasileira
       const currentBrazilianDate = getCurrentBrazilianDate();
       console.log('🇧🇷 Data atual brasileira (será excluída):', currentBrazilianDate);
 
-      // Agrupar comandas por data brasileira
       const groupedByDate: { [key: string]: any[] } = {};
       let excludedTodayCount = 0;
       let processedCount = 0;
@@ -53,10 +101,9 @@ export const useDataCleanup = () => {
       comandas?.forEach(comanda => {
         processedCount++;
         
-        // Converter UTC para horário brasileiro
         const brazilianDate = convertUTCToBrazilianDate(comanda.data_pagamento);
         
-        if (processedCount <= 5) { // Log apenas as primeiras 5 para não poluir
+        if (processedCount <= 5) {
           console.log(`📅 Comanda ${comanda.identificador_cliente}:`, {
             utc: comanda.data_pagamento,
             brazilian: brazilianDate,
@@ -65,7 +112,6 @@ export const useDataCleanup = () => {
           });
         }
         
-        // Excluir comandas do dia atual
         if (brazilianDate === currentBrazilianDate) {
           excludedTodayCount++;
         } else {
@@ -81,7 +127,6 @@ export const useDataCleanup = () => {
       console.log(`  Comandas excluídas (hoje): ${excludedTodayCount}`);
       console.log(`  Datas antigas encontradas: ${Object.keys(groupedByDate).length}`);
 
-      // Converter para array de DateSummary
       const summaries: DateSummary[] = Object.entries(groupedByDate)
         .map(([date, comandas]) => ({
           date,
@@ -90,12 +135,6 @@ export const useDataCleanup = () => {
           comandas
         }))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-      console.log('📋 Datas antigas por ordem (mais recente primeiro):');
-      summaries.forEach((summary, index) => {
-        const formattedDate = formatBrazilianDate(summary.date + 'T00:00:00Z');
-        console.log(`  ${index + 1}. ${formattedDate}: ${summary.count} comandas, ${summary.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
-      });
 
       console.log('✅ ===== BUSCA DE DATAS CONCLUÍDA =====');
       setDateSummaries(summaries);
@@ -107,19 +146,86 @@ export const useDataCleanup = () => {
     }
   };
 
+  const deleteAllPaidComandas = async () => {
+    setIsDeleting(true);
+    
+    try {
+      console.log('🗑️ ===== INICIANDO DELEÇÃO DE TODAS AS COMANDAS PAGAS =====');
+      
+      const { data: comandas, error: selectError } = await supabase
+        .from('comandas')
+        .select('id, identificador_cliente, data_pagamento, total')
+        .eq('status', 'paga')
+        .not('data_pagamento', 'is', null);
+
+      if (selectError) {
+        console.error('❌ Erro ao buscar comandas para deletar:', selectError);
+        throw selectError;
+      }
+
+      console.log('📋 Comandas encontradas para deleção:', comandas?.length || 0);
+
+      if (!comandas || comandas.length === 0) {
+        console.log('ℹ️ Nenhuma comanda paga encontrada');
+        toast.info('Nenhuma comanda paga encontrada');
+        return;
+      }
+
+      const comandaIds = comandas.map(comanda => comanda.id);
+      const totalValue = comandas.reduce((sum, comanda) => sum + (comanda.total || 0), 0);
+
+      console.log(`💰 Valor total a ser deletado: ${totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
+
+      // Deletar itens das comandas primeiro
+      console.log('🗑️ Deletando itens das comandas...');
+      const { error: deleteItensError } = await supabase
+        .from('comanda_itens')
+        .delete()
+        .in('comanda_id', comandaIds);
+
+      if (deleteItensError) {
+        console.error('❌ Erro ao deletar itens das comandas:', deleteItensError);
+        throw deleteItensError;
+      }
+
+      // Deletar comandas
+      console.log('🗑️ Deletando comandas...');
+      const { error: deleteComandasError } = await supabase
+        .from('comandas')
+        .delete()
+        .in('id', comandaIds);
+
+      if (deleteComandasError) {
+        console.error('❌ Erro ao deletar comandas:', deleteComandasError);
+        throw deleteComandasError;
+      }
+
+      console.log('✅ ===== DELEÇÃO DE TODAS AS COMANDAS CONCLUÍDA =====');
+      console.log(`🗑️ ${comandaIds.length} comandas deletadas com sucesso`);
+      toast.success(`${comandaIds.length} comandas deletadas com sucesso`);
+      
+      // Atualizar listas
+      await fetchAllPaidComandas();
+      await fetchDateSummaries();
+    } catch (error) {
+      console.error('❌ Erro ao deletar todas as comandas:', error);
+      toast.error('Erro ao deletar comandas');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const deleteComandasByDate = async (date: string) => {
     setIsDeleting(true);
     
     try {
-      console.log('🗑️ ===== INICIANDO DELEÇÃO =====');
+      console.log('🗑️ ===== INICIANDO DELEÇÃO POR DATA =====');
       console.log('📅 Data brasileira selecionada:', date);
       console.log('📅 Data formatada:', formatBrazilianDate(date + 'T00:00:00Z'));
       
-      // Obter range UTC para a data brasileira
       const { start, end } = getBrazilianDateRange(date);
       console.log('🌍 Range UTC calculado:', { start, end });
       
-      // Buscar comandas da data específica usando o range UTC
       const { data: comandas, error: selectError } = await supabase
         .from('comandas')
         .select('id, identificador_cliente, data_pagamento, total')
@@ -140,7 +246,6 @@ export const useDataCleanup = () => {
         return;
       }
 
-      // Validar se as comandas encontradas pertencem realmente ao dia brasileiro selecionado
       console.log('🔍 Validando comandas encontradas:');
       let validatedCount = 0;
       const comandaIds: string[] = [];
@@ -169,7 +274,7 @@ export const useDataCleanup = () => {
         return;
       }
 
-      // Deletar itens das comandas primeiro (foreign key constraint)
+      // Deletar itens das comandas primeiro
       console.log('🗑️ Deletando itens das comandas...');
       const { error: deleteItensError } = await supabase
         .from('comanda_itens')
@@ -197,8 +302,9 @@ export const useDataCleanup = () => {
       console.log(`🗑️ ${comandaIds.length} comandas deletadas com sucesso`);
       toast.success(`${comandaIds.length} comandas deletadas com sucesso`);
       
-      // Atualizar lista
+      // Atualizar listas
       await fetchDateSummaries();
+      await fetchAllPaidComandas();
     } catch (error) {
       console.error('❌ Erro ao deletar comandas:', error);
       toast.error('Erro ao deletar comandas');
@@ -208,14 +314,23 @@ export const useDataCleanup = () => {
   };
 
   useEffect(() => {
-    fetchDateSummaries();
-  }, []);
+    if (cleanupMode === 'by-date') {
+      fetchDateSummaries();
+    } else {
+      fetchAllPaidComandas();
+    }
+  }, [cleanupMode]);
 
   return {
     dateSummaries,
+    allPaidSummary,
+    cleanupMode,
     isLoading,
     isDeleting,
+    setCleanupMode,
     fetchDateSummaries,
-    deleteComandasByDate
+    fetchAllPaidComandas,
+    deleteComandasByDate,
+    deleteAllPaidComandas
   };
 };
