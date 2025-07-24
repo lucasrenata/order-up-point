@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Calendar, RefreshCw } from 'lucide-react';
+import { getCurrentBrazilianDate, getYesterdayBrazilianDate } from '../utils/dateUtils';
 
 interface ReportFiltersProps {
   selectedDate: string;
@@ -13,13 +14,20 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
   onDateChange, 
   isLoading 
 }) => {
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const today = getCurrentBrazilianDate();
+  const yesterday = getYesterdayBrazilianDate();
 
   const quickFilters = [
     { label: 'Hoje', value: today },
     { label: 'Ontem', value: yesterday },
   ];
+
+  console.log('🇧🇷 Datas brasileiras:', {
+    hoje: today,
+    ontem: yesterday,
+    selectedDate,
+    utcNow: new Date().toISOString().split('T')[0]
+  });
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6 mb-6">

@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
-import { convertUTCToBrazilianTime, getBrazilianDateRange } from '../utils/dateUtils';
+import { convertUTCToBrazilianTime, getBrazilianDateRange, getCurrentBrazilianDate } from '../utils/dateUtils';
 
 interface DateSummary {
   date: string;
@@ -38,7 +37,10 @@ export const useDataCleanup = () => {
 
       // Agrupar comandas por data brasileira
       const groupedByDate: { [key: string]: any[] } = {};
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentBrazilianDate();
+
+      console.log('🇧🇷 Data atual (Brasil):', today);
+      console.log('🌍 Data atual (UTC):', new Date().toISOString().split('T')[0]);
 
       comandas?.forEach(comanda => {
         // Converter UTC para horário brasileiro antes de extrair a data
@@ -46,6 +48,7 @@ export const useDataCleanup = () => {
         
         console.log(`📅 Comanda ${comanda.identificador_cliente}:`, {
           utc: comanda.data_pagamento,
+          utc_date: new Date(comanda.data_pagamento).toISOString().split('T')[0],
           brazilian: brazilianDate,
           isToday: brazilianDate === today
         });

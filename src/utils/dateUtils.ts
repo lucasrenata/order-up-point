@@ -32,3 +32,17 @@ export const getBrazilianDateRange = (date: string) => {
     end: `${date}T23:59:59-03:00`
   };
 };
+
+export const getCurrentBrazilianDate = (): string => {
+  const now = new Date();
+  // Converter para horário brasileiro (UTC-3)
+  const brazilianTime = new Date(now.getTime() - (3 * 60 * 60 * 1000));
+  return brazilianTime.toISOString().split('T')[0];
+};
+
+export const getYesterdayBrazilianDate = (): string => {
+  const now = new Date();
+  // Converter para horário brasileiro (UTC-3) e subtrair 1 dia
+  const brazilianTime = new Date(now.getTime() - (3 * 60 * 60 * 1000) - (24 * 60 * 60 * 1000));
+  return brazilianTime.toISOString().split('T')[0];
+};

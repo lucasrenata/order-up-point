@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ArrowLeft, Download, Printer, ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -9,10 +8,11 @@ import { ReportFilters } from '../components/ReportFilters';
 import { DataCleanupModal } from '../components/DataCleanupModal';
 import { generatePDFReport } from '../utils/pdfGenerator';
 import { useReportData } from '../hooks/useReportData';
+import { getCurrentBrazilianDate } from '../utils/dateUtils';
 
 export default function ReportPage() {
   const navigate = useNavigate();
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getCurrentBrazilianDate());
   const { reportData, isLoading, error, refetch } = useReportData(selectedDate);
 
   const handleDownloadPDF = async () => {

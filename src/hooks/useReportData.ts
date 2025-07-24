@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
@@ -27,7 +26,10 @@ export const useReportData = (selectedDate: string) => {
       console.log('🔍 Buscando dados para a data brasileira:', date);
       
       const { start, end } = getBrazilianDateRange(date);
-      console.log(`🕐 Intervalo de busca: ${start} até ${end}`);
+      console.log(`🕐 Intervalo de busca UTC: ${start} até ${end}`);
+      console.log(`🇧🇷 Data selecionada (Brasil): ${date}`);
+      console.log(`🌍 Data atual UTC: ${new Date().toISOString().split('T')[0]}`);
+      console.log(`🇧🇷 Horário atual Brasil: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`);
       
       // Buscar comandas pagas usando filtro de data brasileira
       const { data: comandas, error: comandasError } = await supabase
@@ -68,11 +70,13 @@ export const useReportData = (selectedDate: string) => {
           minute: '2-digit'
         });
         
+        const utcTime = new Date(comanda.data_pagamento).toISOString();
+        
         console.log(`📋 Comanda ${index + 1}:`, {
           id: comanda.id,
           identificador: comanda.identificador_cliente,
           total: comanda.total,
-          data_pagamento_utc: comanda.data_pagamento,
+          data_pagamento_utc: utcTime,
           data_pagamento_br: brazilianTime,
           itens: comanda.comanda_itens?.length || 0
         });
