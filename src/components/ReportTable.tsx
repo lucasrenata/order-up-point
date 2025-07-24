@@ -25,33 +25,34 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-4 sm:p-6 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
           <Receipt className="text-blue-600" size={20} />
-          Detalhamento das Vendas
+          <span className="truncate">Detalhamento das Vendas</span>
         </h3>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full min-w-[600px]">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <div className="flex items-center gap-2">
                   <User size={16} />
-                  Comanda
+                  <span className="hidden sm:inline">Comanda</span>
                 </div>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <div className="flex items-center gap-2">
                   <Clock size={16} />
-                  Data/Hora (Horário Brasileiro)
+                  <span className="hidden sm:inline">Data/Hora</span>
+                  <span className="sm:hidden">Data</span>
                 </div>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Itens
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Total
               </th>
             </tr>
@@ -59,34 +60,39 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
           <tbody className="bg-white divide-y divide-gray-200">
             {data.comandas.map((comanda) => (
               <tr key={comanda.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Receipt className="text-blue-600" size={16} />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Receipt className="text-blue-600" size={14} />
                     </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">
+                    <div className="ml-2 sm:ml-4 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 truncate">
                         #{comanda.identificador_cliente}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-xs sm:text-sm text-gray-500">
                         {comanda.comanda_itens?.length || 0} item(s)
                       </div>
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {formatBrazilianDateTime(comanda.data_pagamento)}
+                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                  <div className="sm:hidden">
+                    {formatBrazilianDateTime(comanda.data_pagamento).split(' ')[0]}
+                  </div>
+                  <div className="hidden sm:block">
+                    {formatBrazilianDateTime(comanda.data_pagamento)}
+                  </div>
                 </td>
-                <td className="px-6 py-4">
-                  <div className="space-y-2">
+                <td className="px-3 sm:px-6 py-4">
+                  <div className="space-y-1 sm:space-y-2">
                     {comanda.comanda_itens?.map((item: any, index: number) => (
-                      <div key={index} className="flex items-center gap-2 text-sm">
-                        <span className="text-lg">{getProductEmoji(item.produto_id)}</span>
-                        <span className="text-gray-900">{getProductName(item.produto_id)}</span>
-                        <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">
+                      <div key={index} className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                        <span className="text-base sm:text-lg flex-shrink-0">{getProductEmoji(item.produto_id)}</span>
+                        <span className="text-gray-900 truncate flex-1">{getProductName(item.produto_id)}</span>
+                        <span className="bg-gray-100 text-gray-800 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium flex-shrink-0">
                           {item.quantidade}x
                         </span>
-                        <span className="text-gray-600">
+                        <span className="text-gray-600 text-xs sm:text-sm flex-shrink-0">
                           {parseFloat(item.preco_unitario).toLocaleString('pt-BR', { 
                             style: 'currency', 
                             currency: 'BRL' 
@@ -96,7 +102,7 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
                     ))}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
+                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
                   {(comanda.total || 0).toLocaleString('pt-BR', { 
                     style: 'currency', 
                     currency: 'BRL' 
@@ -109,12 +115,12 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
       </div>
 
       {data.comandas.length === 0 && (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Receipt size={32} className="text-gray-400" />
+        <div className="text-center py-8 sm:py-12 px-4">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Receipt size={24} className="text-gray-400" />
           </div>
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Nenhuma venda encontrada</h3>
-          <p className="text-gray-600">Não há vendas registradas para o período selecionado.</p>
+          <p className="text-gray-600 text-sm sm:text-base">Não há vendas registradas para o período selecionado.</p>
         </div>
       )}
     </div>
