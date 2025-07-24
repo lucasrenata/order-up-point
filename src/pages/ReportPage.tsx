@@ -1,109 +1,18 @@
 
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Download, Printer, Calendar, TrendingUp, ShoppingCart } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowLeft, Download, Printer, ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { ReportSummary } from '../components/ReportSummary';
 import { ReportTable } from '../components/ReportTable';
 import { ReportFilters } from '../components/ReportFilters';
 import { generatePDFReport } from '../utils/pdfGenerator';
-import { Comanda, ComandaItem, Product } from '../types/types';
-
-interface ReportData {
-  comandas: Comanda[];
-  produtos: Product[];
-  totalVendas: number;
-  totalItens: number;
-  ticketMedio: number;
-  produtosMaisVendidos: { produto: Product; quantidade: number }[];
-}
+import { useReportData } from '../hooks/useReportData';
 
 export default function ReportPage() {
   const navigate = useNavigate();
-  const [reportData, setReportData] = useState<ReportData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-
-  const fetchReportData = async (date: string) => {
-    setIsLoading(true);
-    try {
-      const startDate = `${date}T00:00:00.000Z`;
-      const endDate = `${date}T23:59:59.999Z`;
-
-      // Buscar comandas pagas do dia
-      const { data: comandas, error: comandasError } = await supabase
-        .from('comandas')
-        .select(`
-          *,
-          comanda_itens (
-            id,
-            created_at,
-            comanda_id,
-            produto_id,
-            quantidade,
-            preco_unitario,
-            descricao
-          )
-        `)
-        .eq('status', 'paga')
-        .gte('data_pagamento', startDate)
-        .lte('data_pagamento', endDate)
-        .order('data_pagamento', { ascending: false });
-
-      if (comandasError) throw comandasError;
-
-      // Buscar produtos
-      const { data: produtos, error: produtosError } = await supabase
-        .from('produtos')
-        .select('*');
-
-      if (produtosError) throw produtosError;
-
-      // Calcular estatísticas
-      const totalVendas = comandas?.reduce((sum, comanda) => sum + (comanda.total || 0), 0) || 0;
-      const totalItens = comandas?.reduce((sum, comanda) => 
-        sum + (comanda.comanda_itens?.reduce((itemSum, item) => itemSum + item.quantidade, 0) || 0), 0) || 0;
-      const ticketMedio = comandas?.length ? totalVendas / comandas.length : 0;
-
-      // Calcular produtos mais vendidos
-      const produtoQuantidades: { [key: number]: number } = {};
-      comandas?.forEach(comanda => {
-        comanda.comanda_itens?.forEach(item => {
-          if (item.produto_id) {
-            produtoQuantidades[item.produto_id] = (produtoQuantidades[item.produto_id] || 0) + item.quantidade;
-          }
-        });
-      });
-
-      const produtosMaisVendidos = Object.entries(produtoQuantidades)
-        .map(([produtoId, quantidade]) => ({
-          produto: produtos?.find(p => p.id === parseInt(produtoId)),
-          quantidade
-        }))
-        .filter(item => item.produto)
-        .sort((a, b) => b.quantidade - a.quantidade)
-        .slice(0, 5) as { produto: Product; quantidade: number }[];
-
-      setReportData({
-        comandas: comandas || [],
-        produtos: produtos || [],
-        totalVendas,
-        totalItens,
-        ticketMedio,
-        produtosMaisVendidos
-      });
-    } catch (error) {
-      console.error('Erro ao buscar dados do relatório:', error);
-      toast.error('Erro ao carregar relatório');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchReportData(selectedDate);
-  }, [selectedDate]);
+  const { reportData, isLoading, error, refetch } = useReportData(selectedDate);
 
   const handleDownloadPDF = async () => {
     if (!reportData) return;
@@ -169,6 +78,16 @@ export default function ReportPage() {
           </div>
         ) : reportData ? (
           <div id="report-content">
+            <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-800">
+                📈 <strong>{reportData.comandas.length}</strong> comandas encontradas para {new Date(selectedDate).toLocaleDateString('pt-BR')}
+                {reportData.totalVendas > 0 && (
+                  <span className="ml-4">
+                    💰 Total: <strong>{reportData.totalVendas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                  </span>
+                )}
+              </p>
+            </div>
             <ReportSummary data={reportData} selectedDate={selectedDate} />
             <ReportTable data={reportData} />
           </div>
@@ -178,7 +97,13 @@ export default function ReportPage() {
               <ShoppingCart size={32} className="text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Nenhuma venda encontrada</h3>
-            <p className="text-gray-600">Não há vendas registradas para o período selecionado.</p>
+            <p className="text-gray-600">Não há vendas registradas para {new Date(selectedDate).toLocaleDateString('pt-BR')}.</p>
+            <button
+              onClick={refetch}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Tentar novamente
+            </button>
           </div>
         )}
       </div>
