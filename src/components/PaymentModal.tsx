@@ -12,9 +12,7 @@ interface PaymentModalProps {
 export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, onClose, onConfirmPayment }) => {
   if (!comanda) return null;
   
-  const subtotal = comanda.comanda_itens.reduce((acc, item) => acc + parseFloat(item.preco_unitario.toString()) * item.quantidade, 0);
-  const taxaServico = subtotal * 0.10;
-  const total = subtotal + taxaServico;
+  const total = comanda.comanda_itens.reduce((acc, item) => acc + parseFloat(item.preco_unitario.toString()) * item.quantidade, 0);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -28,15 +26,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, onClose, on
         </div>
         
         <div className="space-y-3 mb-6 bg-gray-50 p-4 rounded-lg">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Subtotal</span>
-            <span className="font-semibold text-gray-800">{subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Taxa de Serviço (10%)</span>
-            <span className="font-semibold text-gray-800">{taxaServico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-          </div>
-          <div className="flex justify-between text-xl font-bold border-t pt-3 mt-3">
+          <div className="flex justify-between text-xl font-bold">
             <span className="text-gray-900">Total a Pagar</span>
             <span className="text-green-600">{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
           </div>

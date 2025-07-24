@@ -32,9 +32,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     );
   }
 
-  const subtotal = comanda.comanda_itens.reduce((acc, item) => acc + parseFloat(item.preco_unitario.toString()) * item.quantidade, 0);
-  const taxaServico = subtotal * 0.10;
-  const total = subtotal + taxaServico;
+  const total = comanda.comanda_itens.reduce((acc, item) => acc + parseFloat(item.preco_unitario.toString()) * item.quantidade, 0);
 
   return (
     <div className="bg-white rounded-2xl shadow-lg flex flex-col h-full">
@@ -86,15 +84,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
       {comanda.comanda_itens.length > 0 && (
         <div className="p-4 sm:p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-b-2xl">
           <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Subtotal</span>
-              <span className="font-semibold text-gray-800">{subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Taxa de Serviço (10%)</span>
-              <span className="font-semibold text-gray-800">{taxaServico.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-            </div>
-            <div className="flex justify-between text-lg sm:text-xl font-bold border-t border-gray-200 pt-2 sm:pt-3 mt-2 sm:mt-3">
+            <div className="flex justify-between text-lg sm:text-xl font-bold">
               <span className="text-gray-900">Total</span>
               <span className="text-green-600">{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
             </div>
