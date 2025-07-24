@@ -1,5 +1,4 @@
 
-
 export const convertUTCToBrazilianTime = (utcDate: string): string => {
   const date = new Date(utcDate);
   // Usar o fuso horário brasileiro para extrair a data correta
@@ -33,36 +32,34 @@ export const formatBrazilianDateTime = (dateString: string): string => {
 };
 
 export const getBrazilianDateRange = (date: string) => {
-  // Criar datas para início e fim do dia no horário brasileiro
-  // Usar o timezone brasileiro para garantir que o range seja correto
-  const startOfDay = new Date(`${date}T00:00:00`);
-  const endOfDay = new Date(`${date}T23:59:59.999`);
+  // Criar uma data de referência no horário brasileiro
+  const referenceDate = new Date(`${date}T12:00:00`);
   
-  // Converter para UTC considerando o timezone brasileiro
-  // No horário brasileiro, precisamos ajustar para UTC
-  const brazilianOffset = getBrazilianTimezoneOffset();
+  // Obter o início e fim do dia no horário brasileiro
+  const startBrazilian = new Date(referenceDate);
+  startBrazilian.setHours(0, 0, 0, 0);
   
-  const utcStart = new Date(startOfDay.getTime() + (brazilianOffset * 60 * 60 * 1000));
-  const utcEnd = new Date(endOfDay.getTime() + (brazilianOffset * 60 * 60 * 1000));
+  const endBrazilian = new Date(referenceDate);
+  endBrazilian.setHours(23, 59, 59, 999);
+  
+  // Converter para string no formato brasileiro e depois para UTC
+  const startBrazilianString = startBrazilian.toLocaleString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+  const endBrazilianString = endBrazilian.toLocaleString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+  
+  // Calcular o offset brasileiro dinamicamente
+  const now = new Date();
+  const utcTime = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const brazilianTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const offsetHours = (utcTime.getTime() - brazilianTime.getTime()) / (1000 * 60 * 60);
+  
+  // Aplicar o offset para converter para UTC
+  const utcStart = new Date(new Date(startBrazilianString).getTime() + (offsetHours * 60 * 60 * 1000));
+  const utcEnd = new Date(new Date(endBrazilianString).getTime() + (offsetHours * 60 * 60 * 1000));
   
   return {
     start: utcStart.toISOString(),
     end: utcEnd.toISOString()
   };
-};
-
-// Função auxiliar para obter o offset do timezone brasileiro
-const getBrazilianTimezoneOffset = (): number => {
-  // Criar uma data de referência para verificar o offset atual
-  const now = new Date();
-  
-  // Obter o horário brasileiro usando toLocaleString
-  const brazilianTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
-  const utcTime = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }));
-  
-  // Calcular a diferença em horas
-  const offsetMs = utcTime.getTime() - brazilianTime.getTime();
-  return offsetMs / (1000 * 60 * 60);
 };
 
 export const getCurrentBrazilianDate = (): string => {
@@ -94,4 +91,3 @@ export const getYesterdayBrazilianDate = (): string => {
   // Retornar no formato yyyy-mm-dd
   return yesterday.toISOString().split('T')[0];
 };
-
