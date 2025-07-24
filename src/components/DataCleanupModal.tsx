@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Trash2, Calendar, Package, DollarSign, AlertTriangle, List } from 'lucide-react';
+import { Trash2, Calendar, Package, DollarSign, AlertTriangle, List, RefreshCw } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,7 @@ import {
 } from './ui/alert-dialog';
 import { Button } from './ui/button';
 import { useDataCleanup } from '../hooks/useDataCleanup';
-import { formatBrazilianDate } from '../utils/dateUtils';
+import { formatBrazilianDate, getCurrentBrazilianDate } from '../utils/dateUtils';
 
 export const DataCleanupModal: React.FC = () => {
   const { 
@@ -30,6 +30,8 @@ export const DataCleanupModal: React.FC = () => {
     isLoading, 
     isDeleting, 
     setCleanupMode,
+    fetchDateSummaries,
+    fetchAllPaidComandas,
     deleteComandasByDate,
     deleteAllPaidComandas
   } = useDataCleanup();
@@ -52,11 +54,23 @@ export const DataCleanupModal: React.FC = () => {
     setConfirmationChecked(false);
   };
 
+  const handleRefreshData = () => {
+    console.log('🔄 Recarregando dados manualmente...');
+    if (cleanupMode === 'by-date') {
+      fetchDateSummaries();
+    } else {
+      fetchAllPaidComandas();
+    }
+  };
+
   const renderByDateContent = () => {
+    console.log('🎨 Renderizando conteúdo por data:', { isLoading, dateSummariesLength: dateSummaries.length });
+    
     if (isLoading) {
       return (
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Carregando dados...</span>
         </div>
       );
     }
@@ -66,66 +80,99 @@ export const DataCleanupModal: React.FC = () => {
         <div className="text-center py-8">
           <Package className="text-gray-400 mx-auto mb-4" size={48} />
           <h3 className="text-lg font-semibold text-gray-800 mb-2">
-            Nenhum dado antigo encontrado
+            Nenhuma comanda paga encontrada
           </h3>
-          <p className="text-gray-600">
-            Não há comandas pagas antigas para serem removidas por data.
+          <p className="text-gray-600 mb-4">
+            Não há comandas pagas para serem removidas.
           </p>
+          <Button 
+            onClick={handleRefreshData}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <RefreshCw size={16} />
+            Recarregar
+          </Button>
         </div>
       );
     }
 
+    const currentDate = getCurrentBrazilianDate();
+
     return (
       <div className="space-y-3 max-h-60 overflow-y-auto">
-        {dateSummaries.map((summary) => (
-          <div
-            key={summary.date}
-            className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <Calendar className="text-blue-600" size={16} />
-              </div>
-              <div>
-                <p className="font-semibold text-gray-800">
-                  {formatBrazilianDate(summary.date)}
-                </p>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <span className="flex items-center gap-1">
-                    <Package size={14} />
-                    {summary.count} comandas
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <DollarSign size={14} />
-                    {summary.totalValue.toLocaleString('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL'
-                    })}
-                  </span>
+        {dateSummaries.map((summary) => {
+          const isToday = summary.date === currentDate;
+          
+          return (
+            <div
+              key={summary.date}
+              className={`flex items-center justify-between p-4 rounded-lg border ${
+                isToday ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  isToday ? 'bg-yellow-100' : 'bg-blue-100'
+                }`}>
+                  <Calendar className={isToday ? 'text-yellow-600' : 'text-blue-600'} size={16} />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-800 flex items-center gap-2">
+                    {formatBrazilianDate(summary.date)}
+                    {isToday && (
+                      <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded">
+                        HOJE
+                      </span>
+                    )}
+                  </p>
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <span className="flex items-center gap-1">
+                      <Package size={14} />
+                      {summary.count} comandas
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <DollarSign size={14} />
+                      {summary.totalValue.toLocaleString('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL'
+                      })}
+                    </span>
+                  </div>
                 </div>
               </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setSelectedDate(summary.date)}
+                disabled={isDeleting}
+                className="flex items-center gap-2"
+              >
+                <Trash2 size={14} />
+                {isDeleting ? 'Deletando...' : 'Excluir'}
+              </Button>
             </div>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setSelectedDate(summary.date)}
-              disabled={isDeleting}
-              className="flex items-center gap-2"
-            >
-              <Trash2 size={14} />
-              Excluir
-            </Button>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
 
   const renderAllPaidContent = () => {
+    console.log('🎨 Renderizando conteúdo todas as comandas:', { 
+      isLoading, 
+      allPaidSummary: {
+        count: allPaidSummary.count,
+        totalValue: allPaidSummary.totalValue,
+        comandasLength: allPaidSummary.comandas.length
+      }
+    });
+    
     if (isLoading) {
       return (
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Carregando comandas...</span>
         </div>
       );
     }
@@ -137,9 +184,17 @@ export const DataCleanupModal: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-800 mb-2">
             Nenhuma comanda paga encontrada
           </h3>
-          <p className="text-gray-600">
+          <p className="text-gray-600 mb-4">
             Não há comandas pagas para serem removidas.
           </p>
+          <Button 
+            onClick={handleRefreshData}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <RefreshCw size={16} />
+            Recarregar
+          </Button>
         </div>
       );
     }
@@ -198,7 +253,7 @@ export const DataCleanupModal: React.FC = () => {
           className="w-full flex items-center gap-2 bg-red-600 hover:bg-red-700"
         >
           <Trash2 size={16} />
-          Deletar Todas as Comandas Pagas
+          {isDeleting ? 'Deletando...' : 'Deletar Todas as Comandas Pagas'}
         </Button>
       </div>
     );
@@ -282,6 +337,11 @@ export const DataCleanupModal: React.FC = () => {
             <AlertDialogDescription>
               Tem certeza que deseja deletar todas as comandas pagas do dia{' '}
               <strong>{selectedDate ? formatBrazilianDate(selectedDate) : ''}</strong>?
+              {selectedDate === getCurrentBrazilianDate() && (
+                <div className="mt-2 p-2 bg-yellow-100 border border-yellow-300 rounded text-yellow-800">
+                  <strong>⚠️ ATENÇÃO:</strong> Esta é a data de hoje! Comandas podem estar sendo processadas.
+                </div>
+              )}
               <br />
               <br />
               Esta ação não pode ser desfeita e removerá permanentemente:

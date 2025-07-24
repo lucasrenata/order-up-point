@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
@@ -50,6 +49,17 @@ export const useDataCleanup = () => {
       }
 
       console.log('📊 Total de comandas pagas encontradas:', comandas?.length || 0);
+      
+      // Log detalhado das comandas encontradas
+      if (comandas && comandas.length > 0) {
+        console.log('🔍 Detalhes das comandas pagas:');
+        comandas.slice(0, 3).forEach((comanda, index) => {
+          console.log(`  ${index + 1}. ${comanda.identificador_cliente} - ${comanda.total?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} - ${formatBrazilianDate(comanda.data_pagamento)}`);
+        });
+        if (comandas.length > 3) {
+          console.log(`  ... e mais ${comandas.length - 3} comandas`);
+        }
+      }
 
       const totalValue = comandas?.reduce((sum, comanda) => sum + (comanda.total || 0), 0) || 0;
 
@@ -60,12 +70,14 @@ export const useDataCleanup = () => {
       };
 
       console.log('💰 Valor total das comandas pagas:', totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+      console.log('📋 Resumo final allPaidSummary:', summary);
       console.log('✅ ===== BUSCA DE COMANDAS PAGAS CONCLUÍDA =====');
 
       setAllPaidSummary(summary);
     } catch (error) {
       console.error('❌ Erro ao buscar comandas pagas:', error);
       toast.error('Erro ao carregar comandas pagas');
+      setAllPaidSummary({ count: 0, totalValue: 0, comandas: [] });
     } finally {
       setIsLoading(false);
     }
@@ -92,12 +104,12 @@ export const useDataCleanup = () => {
       console.log('📊 Comandas encontradas para análise:', comandas?.length || 0);
 
       const currentBrazilianDate = getCurrentBrazilianDate();
-      console.log('🇧🇷 Data atual brasileira (será excluída):', currentBrazilianDate);
+      console.log('🇧🇷 Data atual brasileira:', currentBrazilianDate);
 
       const groupedByDate: { [key: string]: any[] } = {};
-      let excludedTodayCount = 0;
       let processedCount = 0;
 
+      // MUDANÇA: Não excluir mais comandas do dia atual
       comandas?.forEach(comanda => {
         processedCount++;
         
@@ -112,20 +124,17 @@ export const useDataCleanup = () => {
           });
         }
         
-        if (brazilianDate === currentBrazilianDate) {
-          excludedTodayCount++;
-        } else {
-          if (!groupedByDate[brazilianDate]) {
-            groupedByDate[brazilianDate] = [];
-          }
-          groupedByDate[brazilianDate].push(comanda);
+        // Incluir TODAS as comandas, incluindo as de hoje
+        if (!groupedByDate[brazilianDate]) {
+          groupedByDate[brazilianDate] = [];
         }
+        groupedByDate[brazilianDate].push(comanda);
       });
 
       console.log('📊 Resumo do agrupamento:');
       console.log(`  Comandas processadas: ${processedCount}`);
-      console.log(`  Comandas excluídas (hoje): ${excludedTodayCount}`);
-      console.log(`  Datas antigas encontradas: ${Object.keys(groupedByDate).length}`);
+      console.log(`  Datas encontradas: ${Object.keys(groupedByDate).length}`);
+      console.log(`  Datas: ${Object.keys(groupedByDate).join(', ')}`);
 
       const summaries: DateSummary[] = Object.entries(groupedByDate)
         .map(([date, comandas]) => ({
@@ -136,11 +145,17 @@ export const useDataCleanup = () => {
         }))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+      console.log('📋 Resumo final das datas:');
+      summaries.forEach(summary => {
+        console.log(`  ${summary.date}: ${summary.count} comandas, ${summary.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
+      });
+
       console.log('✅ ===== BUSCA DE DATAS CONCLUÍDA =====');
       setDateSummaries(summaries);
     } catch (error) {
       console.error('❌ Erro ao buscar resumo de datas:', error);
       toast.error('Erro ao carregar dados para limpeza');
+      setDateSummaries([]);
     } finally {
       setIsLoading(false);
     }
@@ -314,12 +329,28 @@ export const useDataCleanup = () => {
   };
 
   useEffect(() => {
+    console.log('🔄 useEffect executado, cleanupMode:', cleanupMode);
     if (cleanupMode === 'by-date') {
       fetchDateSummaries();
     } else {
       fetchAllPaidComandas();
     }
   }, [cleanupMode]);
+
+  // Log do estado atual para debug
+  useEffect(() => {
+    console.log('📊 Estado atual do hook:', {
+      cleanupMode,
+      isLoading,
+      isDeleting,
+      dateSummariesCount: dateSummaries.length,
+      allPaidSummary: {
+        count: allPaidSummary.count,
+        totalValue: allPaidSummary.totalValue,
+        comandasLength: allPaidSummary.comandas.length
+      }
+    });
+  }, [cleanupMode, isLoading, isDeleting, dateSummaries, allPaidSummary]);
 
   return {
     dateSummaries,
