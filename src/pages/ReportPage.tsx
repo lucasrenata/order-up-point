@@ -81,16 +81,6 @@ export default function ReportPage() {
           </div>
         ) : reportData ? (
           <div id="report-content">
-            <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-800">
-                📈 <strong>{reportData.comandas.length}</strong> comandas encontradas para {formatBrazilianDate(selectedDate + 'T00:00:00Z')}
-                {reportData.totalVendas > 0 && (
-                  <span className="ml-4">
-                    💰 Total: <strong>{reportData.totalVendas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
-                  </span>
-                )}
-              </p>
-            </div>
             <ReportSummary data={reportData} selectedDate={selectedDate} />
             <ReportTable data={reportData} />
           </div>
