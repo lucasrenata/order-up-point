@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { ReportSummary } from '../components/ReportSummary';
 import { ReportTable } from '../components/ReportTable';
 import { ReportFilters } from '../components/ReportFilters';
+import { DataCleanupModal } from '../components/DataCleanupModal';
 import { generatePDFReport } from '../utils/pdfGenerator';
 import { useReportData } from '../hooks/useReportData';
 
@@ -43,6 +44,7 @@ export default function ReportPage() {
               Voltar ao PDV
             </button>
             <div className="flex gap-2">
+              <DataCleanupModal />
               <button
                 onClick={handlePrint}
                 className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
