@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
@@ -35,32 +36,37 @@ export const useDataCleanup = () => {
 
       console.log('✅ Comandas encontradas:', comandas?.length || 0);
 
+      // Obter data atual brasileira
+      const currentBrazilianDate = getCurrentBrazilianDate();
+      console.log('🇧🇷 Data atual brasileira:', currentBrazilianDate);
+
       // Agrupar comandas por data brasileira
       const groupedByDate: { [key: string]: any[] } = {};
-      const today = getCurrentBrazilianDate();
-
-      console.log('🇧🇷 Data atual (Brasil):', today);
-      console.log('🌍 Data atual (UTC):', new Date().toISOString().split('T')[0]);
+      let excludedTodayCount = 0;
 
       comandas?.forEach(comanda => {
-        // Converter UTC para horário brasileiro antes de extrair a data
+        // Converter UTC para horário brasileiro
         const brazilianDate = convertUTCToBrazilianTime(comanda.data_pagamento);
         
         console.log(`📅 Comanda ${comanda.identificador_cliente}:`, {
-          utc: comanda.data_pagamento,
-          utc_date: new Date(comanda.data_pagamento).toISOString().split('T')[0],
-          brazilian: brazilianDate,
-          isToday: brazilianDate === today
+          utcOriginal: comanda.data_pagamento,
+          brazilianDate: brazilianDate,
+          isToday: brazilianDate === currentBrazilianDate
         });
         
-        // Não incluir comandas do dia atual
-        if (brazilianDate !== today) {
+        // Excluir comandas do dia atual
+        if (brazilianDate === currentBrazilianDate) {
+          excludedTodayCount++;
+        } else {
           if (!groupedByDate[brazilianDate]) {
             groupedByDate[brazilianDate] = [];
           }
           groupedByDate[brazilianDate].push(comanda);
         }
       });
+
+      console.log(`📊 Comandas excluídas (hoje): ${excludedTodayCount}`);
+      console.log(`📊 Datas antigas com comandas: ${Object.keys(groupedByDate).length}`);
 
       // Converter para array de DateSummary
       const summaries: DateSummary[] = Object.entries(groupedByDate)
@@ -72,9 +78,9 @@ export const useDataCleanup = () => {
         }))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-      console.log('📊 Resumo por data (horário brasileiro):', summaries.length);
+      console.log('📋 Resumo final por data (horário brasileiro):');
       summaries.forEach(summary => {
-        console.log(`📋 ${summary.date}: ${summary.count} comandas, ${summary.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
+        console.log(`  ${summary.date}: ${summary.count} comandas, ${summary.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
       });
 
       setDateSummaries(summaries);
@@ -90,12 +96,15 @@ export const useDataCleanup = () => {
     setIsDeleting(true);
     
     try {
-      console.log(`🗑️ Deletando comandas da data brasileira: ${date}`);
+      console.log(`🗑️ Iniciando deleção para data brasileira: ${date}`);
       
+      // Obter range UTC para a data brasileira
       const { start, end } = getBrazilianDateRange(date);
-      console.log(`🕐 Intervalo de busca: ${start} até ${end}`);
+      console.log(`🕐 Range UTC calculado:`);
+      console.log(`  Início: ${start}`);
+      console.log(`  Fim: ${end}`);
       
-      // Buscar comandas da data específica usando o intervalo brasileiro
+      // Buscar comandas da data específica usando o range UTC
       const { data: comandas, error: selectError } = await supabase
         .from('comandas')
         .select('id, identificador_cliente, data_pagamento, total')
@@ -108,19 +117,41 @@ export const useDataCleanup = () => {
         throw selectError;
       }
 
+      console.log(`📋 Comandas encontradas no range: ${comandas?.length || 0}`);
+
       if (!comandas || comandas.length === 0) {
         console.log('ℹ️ Nenhuma comanda encontrada para a data selecionada');
         toast.info('Nenhuma comanda encontrada para a data selecionada');
         return;
       }
 
-      const comandaIds = comandas.map(c => c.id);
-      console.log(`📋 Deletando ${comandaIds.length} comandas da data ${date}:`);
+      // Validar se as comandas encontradas pertencem realmente ao dia brasileiro selecionado
+      console.log('🔍 Validando comandas encontradas:');
+      let validatedCount = 0;
+      const comandaIds: string[] = [];
+
       comandas.forEach(comanda => {
-        console.log(`  - ${comanda.identificador_cliente} (${comanda.data_pagamento})`);
+        const brazilianDate = convertUTCToBrazilianTime(comanda.data_pagamento);
+        console.log(`  ${comanda.identificador_cliente}: UTC ${comanda.data_pagamento} → BR ${brazilianDate}`);
+        
+        if (brazilianDate === date) {
+          validatedCount++;
+          comandaIds.push(comanda.id);
+        } else {
+          console.warn(`⚠️ Comanda ${comanda.identificador_cliente} não pertence ao dia ${date} (pertence ao dia ${brazilianDate})`);
+        }
       });
 
+      console.log(`✅ Comandas validadas para deleção: ${validatedCount} de ${comandas.length}`);
+
+      if (comandaIds.length === 0) {
+        console.log('❌ Nenhuma comanda válida encontrada após validação');
+        toast.error('Nenhuma comanda válida encontrada para a data selecionada');
+        return;
+      }
+
       // Deletar itens das comandas primeiro (foreign key constraint)
+      console.log('🗑️ Deletando itens das comandas...');
       const { error: deleteItensError } = await supabase
         .from('comanda_itens')
         .delete()
@@ -132,6 +163,7 @@ export const useDataCleanup = () => {
       }
 
       // Deletar comandas
+      console.log('🗑️ Deletando comandas...');
       const { error: deleteComandasError } = await supabase
         .from('comandas')
         .delete()
@@ -142,7 +174,7 @@ export const useDataCleanup = () => {
         throw deleteComandasError;
       }
 
-      console.log('✅ Comandas deletadas com sucesso');
+      console.log('✅ Deleção concluída com sucesso');
       toast.success(`${comandaIds.length} comandas deletadas com sucesso`);
       
       // Atualizar lista
