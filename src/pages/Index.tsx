@@ -242,6 +242,7 @@ export default function Index() {
     console.log(`  Comanda: ${activeComanda.identificador_cliente}`);
     console.log(`  Total: ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
     console.log(`  Data/hora pagamento (BR): ${brazilianPaymentDateTime}`);
+    console.log(`  Data/hora pagamento (UTC): ${new Date(brazilianPaymentDateTime).toISOString()}`);
     
     const { error } = await supabase
       .from('comandas')

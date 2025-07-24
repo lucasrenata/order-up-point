@@ -1,6 +1,6 @@
 
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { formatBrazilianDate, formatBrazilianDateTime } from './dateUtils';
 
 interface ReportData {
   comandas: any[];
@@ -12,24 +12,6 @@ interface ReportData {
 }
 
 export const generatePDFReport = async (data: ReportData, selectedDate: string) => {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   const getProductName = (produtoId: number | null) => {
     if (!produtoId) return 'Prato por Quilo';
     const produto = data.produtos.find(p => p.id === produtoId);
@@ -47,8 +29,8 @@ export const generatePDFReport = async (data: ReportData, selectedDate: string) 
   pdf.text('🍽️ Relatório de Vendas', 20, 20);
   pdf.setFontSize(12);
   pdf.text(`Restaurante por Quilo`, 20, 30);
-  pdf.text(`Data: ${formatDate(selectedDate)}`, 20, 40);
-  pdf.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 20, 50);
+  pdf.text(`Data: ${formatBrazilianDate(selectedDate + 'T00:00:00Z')}`, 20, 40);
+  pdf.text(`Gerado em: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`, 20, 50);
   
   // Linha separadora
   pdf.setLineWidth(0.5);
@@ -111,7 +93,7 @@ export const generatePDFReport = async (data: ReportData, selectedDate: string) 
     }
     
     pdf.text(`#${comanda.identificador_cliente}`, 20, yPos);
-    pdf.text(formatDateTime(comanda.data_pagamento), 60, yPos);
+    pdf.text(formatBrazilianDateTime(comanda.data_pagamento), 60, yPos);
     
     // Itens da comanda
     const itensText = comanda.comanda_itens?.map((item: any) => 
@@ -131,8 +113,8 @@ export const generatePDFReport = async (data: ReportData, selectedDate: string) 
     yPos += Math.max(6, splitText.length * 4);
   });
   
-  // Rodapé - usar a propriedade getCurrentPageInfo() para obter informações da página atual
-  const pageCount = (pdf as any).internal.pages.length - 1; // Subtract 1 because pages array includes empty first element
+  // Rodapé
+  const pageCount = (pdf as any).internal.pages.length - 1;
   for (let i = 1; i <= pageCount; i++) {
     pdf.setPage(i);
     pdf.setFontSize(8);

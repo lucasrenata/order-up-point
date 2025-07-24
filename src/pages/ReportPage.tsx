@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ArrowLeft, Download, Printer, ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +9,7 @@ import { ReportFilters } from '../components/ReportFilters';
 import { DataCleanupModal } from '../components/DataCleanupModal';
 import { generatePDFReport } from '../utils/pdfGenerator';
 import { useReportData } from '../hooks/useReportData';
-import { getCurrentBrazilianDate } from '../utils/dateUtils';
+import { getCurrentBrazilianDate, formatBrazilianDate } from '../utils/dateUtils';
 
 export default function ReportPage() {
   const navigate = useNavigate();
@@ -82,7 +83,7 @@ export default function ReportPage() {
           <div id="report-content">
             <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <p className="text-sm text-blue-800">
-                📈 <strong>{reportData.comandas.length}</strong> comandas encontradas para {new Date(selectedDate).toLocaleDateString('pt-BR')}
+                📈 <strong>{reportData.comandas.length}</strong> comandas encontradas para {formatBrazilianDate(selectedDate + 'T00:00:00Z')}
                 {reportData.totalVendas > 0 && (
                   <span className="ml-4">
                     💰 Total: <strong>{reportData.totalVendas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
@@ -99,7 +100,7 @@ export default function ReportPage() {
               <ShoppingCart size={32} className="text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Nenhuma venda encontrada</h3>
-            <p className="text-gray-600">Não há vendas registradas para {new Date(selectedDate).toLocaleDateString('pt-BR')}.</p>
+            <p className="text-gray-600">Não há vendas registradas para {formatBrazilianDate(selectedDate + 'T00:00:00Z')}.</p>
             <button
               onClick={refetch}
               className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

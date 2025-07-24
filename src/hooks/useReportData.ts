@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { Comanda, Product } from '../types/types';
-import { getBrazilianDateRange } from '../utils/dateUtils';
+import { getBrazilianDateRange, formatBrazilianDate } from '../utils/dateUtils';
 
 interface ReportData {
   comandas: Comanda[];
@@ -26,6 +26,7 @@ export const useReportData = (selectedDate: string) => {
     try {
       console.log('🔍 ===== INICIANDO BUSCA DE RELATÓRIO =====');
       console.log('📅 Data selecionada (Brasil):', date);
+      console.log('📅 Data formatada:', formatBrazilianDate(date + 'T00:00:00Z'));
       
       const { start, end } = getBrazilianDateRange(date);
       console.log('🌍 Range UTC para consulta:', { start, end });
@@ -109,7 +110,7 @@ export const useReportData = (selectedDate: string) => {
       const ticketMedio = comandas?.length ? totalVendas / comandas.length : 0;
 
       console.log('📈 ===== ESTATÍSTICAS FINAIS =====');
-      console.log('📅 Data:', date);
+      console.log('📅 Data:', formatBrazilianDate(date + 'T00:00:00Z'));
       console.log('💰 Total vendas:', totalVendas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
       console.log('📦 Total itens:', totalItens);
       console.log('🎯 Ticket médio:', ticketMedio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));

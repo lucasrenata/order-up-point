@@ -2,7 +2,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
-import { convertUTCToBrazilianTime, getBrazilianDateRange, getCurrentBrazilianDate } from '../utils/dateUtils';
+import { 
+  convertUTCToBrazilianDate, 
+  getBrazilianDateRange, 
+  getCurrentBrazilianDate,
+  formatBrazilianDate 
+} from '../utils/dateUtils';
 
 interface DateSummary {
   date: string;
@@ -49,12 +54,13 @@ export const useDataCleanup = () => {
         processedCount++;
         
         // Converter UTC para horário brasileiro
-        const brazilianDate = convertUTCToBrazilianTime(comanda.data_pagamento);
+        const brazilianDate = convertUTCToBrazilianDate(comanda.data_pagamento);
         
         if (processedCount <= 5) { // Log apenas as primeiras 5 para não poluir
           console.log(`📅 Comanda ${comanda.identificador_cliente}:`, {
             utc: comanda.data_pagamento,
             brazilian: brazilianDate,
+            brazilian_formatted: formatBrazilianDate(comanda.data_pagamento),
             isToday: brazilianDate === currentBrazilianDate
           });
         }
@@ -87,7 +93,8 @@ export const useDataCleanup = () => {
 
       console.log('📋 Datas antigas por ordem (mais recente primeiro):');
       summaries.forEach((summary, index) => {
-        console.log(`  ${index + 1}. ${summary.date}: ${summary.count} comandas, ${summary.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
+        const formattedDate = formatBrazilianDate(summary.date + 'T00:00:00Z');
+        console.log(`  ${index + 1}. ${formattedDate}: ${summary.count} comandas, ${summary.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
       });
 
       console.log('✅ ===== BUSCA DE DATAS CONCLUÍDA =====');
@@ -106,6 +113,7 @@ export const useDataCleanup = () => {
     try {
       console.log('🗑️ ===== INICIANDO DELEÇÃO =====');
       console.log('📅 Data brasileira selecionada:', date);
+      console.log('📅 Data formatada:', formatBrazilianDate(date + 'T00:00:00Z'));
       
       // Obter range UTC para a data brasileira
       const { start, end } = getBrazilianDateRange(date);
@@ -138,7 +146,7 @@ export const useDataCleanup = () => {
       const comandaIds: string[] = [];
 
       comandas.forEach(comanda => {
-        const brazilianDate = convertUTCToBrazilianTime(comanda.data_pagamento);
+        const brazilianDate = convertUTCToBrazilianDate(comanda.data_pagamento);
         const brazilianTime = new Date(comanda.data_pagamento).toLocaleString('pt-BR', {
           timeZone: 'America/Sao_Paulo'
         });
