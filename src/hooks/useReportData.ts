@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
@@ -23,15 +24,13 @@ export const useReportData = (selectedDate: string) => {
     setError(null);
     
     try {
-      console.log('🔍 Buscando dados para a data brasileira:', date);
+      console.log('🔍 ===== INICIANDO BUSCA DE RELATÓRIO =====');
+      console.log('📅 Data selecionada (Brasil):', date);
       
       const { start, end } = getBrazilianDateRange(date);
-      console.log(`🕐 Intervalo de busca UTC: ${start} até ${end}`);
-      console.log(`🇧🇷 Data selecionada (Brasil): ${date}`);
-      console.log(`🌍 Data atual UTC: ${new Date().toISOString().split('T')[0]}`);
-      console.log(`🇧🇷 Horário atual Brasil: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`);
+      console.log('🌍 Range UTC para consulta:', { start, end });
       
-      // Buscar comandas pagas usando filtro de data brasileira
+      // Buscar comandas pagas usando filtro de data UTC corrigido
       const { data: comandas, error: comandasError } = await supabase
         .from('comandas')
         .select(`
@@ -57,9 +56,12 @@ export const useReportData = (selectedDate: string) => {
         throw comandasError;
       }
 
-      console.log('✅ Comandas encontradas:', comandas?.length || 0);
+      console.log('📊 Resultado da consulta:', {
+        total_comandas: comandas?.length || 0,
+        range_usado: { start, end }
+      });
       
-      // Log detalhado das comandas com horário brasileiro
+      // Log detalhado das comandas encontradas
       comandas?.forEach((comanda, index) => {
         const brazilianTime = new Date(comanda.data_pagamento).toLocaleString('pt-BR', {
           timeZone: 'America/Sao_Paulo',
@@ -70,13 +72,10 @@ export const useReportData = (selectedDate: string) => {
           minute: '2-digit'
         });
         
-        const utcTime = new Date(comanda.data_pagamento).toISOString();
-        
         console.log(`📋 Comanda ${index + 1}:`, {
-          id: comanda.id,
-          identificador: comanda.identificador_cliente,
-          total: comanda.total,
-          data_pagamento_utc: utcTime,
+          id: comanda.identificador_cliente,
+          total: comanda.total?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+          data_pagamento_utc: comanda.data_pagamento,
           data_pagamento_br: brazilianTime,
           itens: comanda.comanda_itens?.length || 0
         });
@@ -109,11 +108,12 @@ export const useReportData = (selectedDate: string) => {
       
       const ticketMedio = comandas?.length ? totalVendas / comandas.length : 0;
 
-      console.log('📊 Estatísticas calculadas para', date, '(horário brasileiro):');
-      console.log('💰 Total de vendas:', totalVendas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
-      console.log('📦 Total de itens:', totalItens);
+      console.log('📈 ===== ESTATÍSTICAS FINAIS =====');
+      console.log('📅 Data:', date);
+      console.log('💰 Total vendas:', totalVendas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+      console.log('📦 Total itens:', totalItens);
       console.log('🎯 Ticket médio:', ticketMedio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
-      console.log('📋 Número de comandas:', comandas?.length || 0);
+      console.log('📋 Comandas encontradas:', comandas?.length || 0);
 
       // Calcular produtos mais vendidos
       const produtoQuantidades: { [key: number]: number } = {};
@@ -135,6 +135,7 @@ export const useReportData = (selectedDate: string) => {
         .slice(0, 5) as { produto: Product; quantidade: number }[];
 
       console.log('🏆 Produtos mais vendidos:', produtosMaisVendidos);
+      console.log('✅ ===== RELATÓRIO CONCLUÍDO =====');
 
       setReportData({
         comandas: comandas || [],

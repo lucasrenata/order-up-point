@@ -8,6 +8,7 @@ import { InputPanel } from '../components/InputPanel';
 import { supabase } from '../lib/supabase';
 import { Comanda, ComandaItem, Product } from '../types/types';
 import { toast } from 'sonner';
+import { getCurrentBrazilianDateTime } from '../utils/dateUtils';
 
 export default function Index() {
   const navigate = useNavigate();
@@ -234,12 +235,20 @@ export default function Index() {
   const handleConfirmPayment = async (total: number) => {
     if (!activeComanda) return;
     
+    // Usar data/hora brasileira atual para o pagamento
+    const brazilianPaymentDateTime = getCurrentBrazilianDateTime();
+    
+    console.log(`💳 Processando pagamento:`);
+    console.log(`  Comanda: ${activeComanda.identificador_cliente}`);
+    console.log(`  Total: ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
+    console.log(`  Data/hora pagamento (BR): ${brazilianPaymentDateTime}`);
+    
     const { error } = await supabase
       .from('comandas')
       .update({ 
         status: 'paga', 
         total: total, 
-        data_pagamento: new Date().toISOString() 
+        data_pagamento: brazilianPaymentDateTime
       })
       .eq('id', activeComanda.id);
 
@@ -247,6 +256,7 @@ export default function Index() {
       console.error('Erro ao finalizar pagamento:', error);
       showNotification('Erro ao finalizar pagamento.', 'error');
     } else {
+      console.log('✅ Pagamento finalizado com sucesso!');
       showNotification(`Comanda #${activeComanda.identificador_cliente} paga com sucesso!`, 'success');
       setActiveComanda(null);
       setPaymentModalOpen(false);

@@ -20,7 +20,7 @@ export const useDataCleanup = () => {
     setIsLoading(true);
     
     try {
-      console.log('🔍 Buscando datas com comandas pagas...');
+      console.log('🔍 ===== INICIANDO BUSCA DE DATAS PARA LIMPEZA =====');
       
       const { data: comandas, error } = await supabase
         .from('comandas')
@@ -34,25 +34,30 @@ export const useDataCleanup = () => {
         throw error;
       }
 
-      console.log('✅ Comandas encontradas:', comandas?.length || 0);
+      console.log('📊 Comandas encontradas para análise:', comandas?.length || 0);
 
       // Obter data atual brasileira
       const currentBrazilianDate = getCurrentBrazilianDate();
-      console.log('🇧🇷 Data atual brasileira:', currentBrazilianDate);
+      console.log('🇧🇷 Data atual brasileira (será excluída):', currentBrazilianDate);
 
       // Agrupar comandas por data brasileira
       const groupedByDate: { [key: string]: any[] } = {};
       let excludedTodayCount = 0;
+      let processedCount = 0;
 
       comandas?.forEach(comanda => {
+        processedCount++;
+        
         // Converter UTC para horário brasileiro
         const brazilianDate = convertUTCToBrazilianTime(comanda.data_pagamento);
         
-        console.log(`📅 Comanda ${comanda.identificador_cliente}:`, {
-          utcOriginal: comanda.data_pagamento,
-          brazilianDate: brazilianDate,
-          isToday: brazilianDate === currentBrazilianDate
-        });
+        if (processedCount <= 5) { // Log apenas as primeiras 5 para não poluir
+          console.log(`📅 Comanda ${comanda.identificador_cliente}:`, {
+            utc: comanda.data_pagamento,
+            brazilian: brazilianDate,
+            isToday: brazilianDate === currentBrazilianDate
+          });
+        }
         
         // Excluir comandas do dia atual
         if (brazilianDate === currentBrazilianDate) {
@@ -65,8 +70,10 @@ export const useDataCleanup = () => {
         }
       });
 
-      console.log(`📊 Comandas excluídas (hoje): ${excludedTodayCount}`);
-      console.log(`📊 Datas antigas com comandas: ${Object.keys(groupedByDate).length}`);
+      console.log('📊 Resumo do agrupamento:');
+      console.log(`  Comandas processadas: ${processedCount}`);
+      console.log(`  Comandas excluídas (hoje): ${excludedTodayCount}`);
+      console.log(`  Datas antigas encontradas: ${Object.keys(groupedByDate).length}`);
 
       // Converter para array de DateSummary
       const summaries: DateSummary[] = Object.entries(groupedByDate)
@@ -78,11 +85,12 @@ export const useDataCleanup = () => {
         }))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-      console.log('📋 Resumo final por data (horário brasileiro):');
-      summaries.forEach(summary => {
-        console.log(`  ${summary.date}: ${summary.count} comandas, ${summary.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
+      console.log('📋 Datas antigas por ordem (mais recente primeiro):');
+      summaries.forEach((summary, index) => {
+        console.log(`  ${index + 1}. ${summary.date}: ${summary.count} comandas, ${summary.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
       });
 
+      console.log('✅ ===== BUSCA DE DATAS CONCLUÍDA =====');
       setDateSummaries(summaries);
     } catch (error) {
       console.error('❌ Erro ao buscar resumo de datas:', error);
@@ -96,13 +104,12 @@ export const useDataCleanup = () => {
     setIsDeleting(true);
     
     try {
-      console.log(`🗑️ Iniciando deleção para data brasileira: ${date}`);
+      console.log('🗑️ ===== INICIANDO DELEÇÃO =====');
+      console.log('📅 Data brasileira selecionada:', date);
       
       // Obter range UTC para a data brasileira
       const { start, end } = getBrazilianDateRange(date);
-      console.log(`🕐 Range UTC calculado:`);
-      console.log(`  Início: ${start}`);
-      console.log(`  Fim: ${end}`);
+      console.log('🌍 Range UTC calculado:', { start, end });
       
       // Buscar comandas da data específica usando o range UTC
       const { data: comandas, error: selectError } = await supabase
@@ -117,7 +124,7 @@ export const useDataCleanup = () => {
         throw selectError;
       }
 
-      console.log(`📋 Comandas encontradas no range: ${comandas?.length || 0}`);
+      console.log('📋 Comandas encontradas no range UTC:', comandas?.length || 0);
 
       if (!comandas || comandas.length === 0) {
         console.log('ℹ️ Nenhuma comanda encontrada para a data selecionada');
@@ -132,7 +139,11 @@ export const useDataCleanup = () => {
 
       comandas.forEach(comanda => {
         const brazilianDate = convertUTCToBrazilianTime(comanda.data_pagamento);
-        console.log(`  ${comanda.identificador_cliente}: UTC ${comanda.data_pagamento} → BR ${brazilianDate}`);
+        const brazilianTime = new Date(comanda.data_pagamento).toLocaleString('pt-BR', {
+          timeZone: 'America/Sao_Paulo'
+        });
+        
+        console.log(`  ${comanda.identificador_cliente}: UTC ${comanda.data_pagamento} → BR ${brazilianDate} (${brazilianTime})`);
         
         if (brazilianDate === date) {
           validatedCount++;
@@ -174,7 +185,8 @@ export const useDataCleanup = () => {
         throw deleteComandasError;
       }
 
-      console.log('✅ Deleção concluída com sucesso');
+      console.log('✅ ===== DELEÇÃO CONCLUÍDA =====');
+      console.log(`🗑️ ${comandaIds.length} comandas deletadas com sucesso`);
       toast.success(`${comandaIds.length} comandas deletadas com sucesso`);
       
       // Atualizar lista

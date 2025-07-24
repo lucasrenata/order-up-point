@@ -32,45 +32,101 @@ export const formatBrazilianDateTime = (dateString: string): string => {
 };
 
 export const getBrazilianDateRange = (date: string) => {
-  // Criar uma data de referência no horário brasileiro
-  const referenceDate = new Date(`${date}T12:00:00`);
+  console.log(`🔍 Calculando range para data brasileira: ${date}`);
   
-  // Obter o início e fim do dia no horário brasileiro
-  const startBrazilian = new Date(referenceDate);
-  startBrazilian.setHours(0, 0, 0, 0);
+  // Criar data base no formato brasileiro
+  const baseDate = new Date(`${date}T00:00:00`);
+  console.log(`📅 Data base criada: ${baseDate.toISOString()}`);
   
-  const endBrazilian = new Date(referenceDate);
-  endBrazilian.setHours(23, 59, 59, 999);
+  // Criar início do dia brasileiro (00:00:00)
+  const startOfDay = new Date(baseDate);
+  startOfDay.setHours(0, 0, 0, 0);
   
-  // Converter para string no formato brasileiro e depois para UTC
-  const startBrazilianString = startBrazilian.toLocaleString('sv-SE', { timeZone: 'America/Sao_Paulo' });
-  const endBrazilianString = endBrazilian.toLocaleString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+  // Criar fim do dia brasileiro (23:59:59.999)
+  const endOfDay = new Date(baseDate);
+  endOfDay.setHours(23, 59, 59, 999);
   
-  // Calcular o offset brasileiro dinamicamente
+  console.log(`🇧🇷 Dia brasileiro - Início: ${startOfDay.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`);
+  console.log(`🇧🇷 Dia brasileiro - Fim: ${endOfDay.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`);
+  
+  // Converter para strings ISO considerando o timezone brasileiro
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+  
+  // Formatar as datas no timezone brasileiro
+  const startBrazilian = formatter.format(startOfDay).replace(' ', 'T');
+  const endBrazilian = formatter.format(endOfDay).replace(' ', 'T');
+  
+  console.log(`🇧🇷 Início formatado (BR): ${startBrazilian}`);
+  console.log(`🇧🇷 Fim formatado (BR): ${endBrazilian}`);
+  
+  // Converter para UTC considerando o offset brasileiro
   const now = new Date();
-  const utcTime = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
-  const brazilianTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-  const offsetHours = (utcTime.getTime() - brazilianTime.getTime()) / (1000 * 60 * 60);
+  const utcOffset = now.getTimezoneOffset();
+  const brazilianOffset = -180; // Brasil é UTC-3 (ou -180 minutos)
+  const offsetDiff = (utcOffset - brazilianOffset) * 60 * 1000;
   
-  // Aplicar o offset para converter para UTC
-  const utcStart = new Date(new Date(startBrazilianString).getTime() + (offsetHours * 60 * 60 * 1000));
-  const utcEnd = new Date(new Date(endBrazilianString).getTime() + (offsetHours * 60 * 60 * 1000));
+  console.log(`🌍 UTC offset: ${utcOffset} minutos`);
+  console.log(`🇧🇷 Brasil offset: ${brazilianOffset} minutos`);
+  console.log(`⚖️ Diferença: ${offsetDiff / (60 * 1000)} horas`);
   
-  return {
+  // Aplicar correção de timezone
+  const utcStart = new Date(new Date(startBrazilian).getTime() + offsetDiff);
+  const utcEnd = new Date(new Date(endBrazilian).getTime() + offsetDiff);
+  
+  const result = {
     start: utcStart.toISOString(),
     end: utcEnd.toISOString()
   };
+  
+  console.log(`🌍 Range UTC final:`);
+  console.log(`  Início: ${result.start}`);
+  console.log(`  Fim: ${result.end}`);
+  
+  return result;
 };
 
 export const getCurrentBrazilianDate = (): string => {
   const now = new Date();
+  console.log(`🕐 Hora atual UTC: ${now.toISOString()}`);
+  console.log(`🇧🇷 Hora atual Brasil: ${now.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`);
+  
   const brazilianDateString = now.toLocaleDateString('pt-BR', {
     timeZone: 'America/Sao_Paulo'
   });
   
+  console.log(`🇧🇷 Data brasileira string: ${brazilianDateString}`);
+  
   // Converter formato dd/mm/yyyy para yyyy-mm-dd
   const [day, month, year] = brazilianDateString.split('/');
-  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  const result = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  
+  console.log(`🇧🇷 Data brasileira formatada: ${result}`);
+  return result;
+};
+
+export const getCurrentBrazilianDateTime = (): string => {
+  const now = new Date();
+  
+  // Obter a data/hora atual no timezone brasileiro
+  const brazilianDateTime = now.toLocaleString('sv-SE', {
+    timeZone: 'America/Sao_Paulo'
+  });
+  
+  // Converter para formato ISO
+  const isoDateTime = brazilianDateTime.replace(' ', 'T') + '.000Z';
+  
+  console.log(`🇧🇷 Data/hora atual (Brasil): ${now.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`);
+  console.log(`🌍 Convertida para ISO: ${isoDateTime}`);
+  
+  return isoDateTime;
 };
 
 export const getYesterdayBrazilianDate = (): string => {
@@ -84,10 +140,14 @@ export const getYesterdayBrazilianDate = (): string => {
   const [day, month, year] = brazilianDateString.split('/');
   const currentBrazilianDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   
+  console.log(`🇧🇷 Data atual brasileira: ${currentBrazilianDate}`);
+  
   // Subtrair 1 dia da data brasileira atual
   const yesterday = new Date(currentBrazilianDate);
   yesterday.setDate(yesterday.getDate() - 1);
   
-  // Retornar no formato yyyy-mm-dd
-  return yesterday.toISOString().split('T')[0];
+  const result = yesterday.toISOString().split('T')[0];
+  console.log(`🇧🇷 Data de ontem brasileira: ${result}`);
+  
+  return result;
 };
