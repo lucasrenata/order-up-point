@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { DollarSign, Package, TrendingUp, Award } from 'lucide-react';
+import { formatBrazilianDate } from '../utils/dateUtils';
 
 interface ReportSummaryProps {
   data: {
@@ -14,14 +15,6 @@ interface ReportSummaryProps {
 }
 
 export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate }) => {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-
   return (
     <div className="mb-8">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -82,7 +75,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Award className="text-yellow-500" size={20} />
-            Produtos Mais Vendidos - {formatDate(selectedDate)}
+            Produtos Mais Vendidos - {formatBrazilianDate(selectedDate)}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {data.produtosMaisVendidos.map((item, index) => (
