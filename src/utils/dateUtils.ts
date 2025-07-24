@@ -1,9 +1,14 @@
 
 export const convertUTCToBrazilianTime = (utcDate: string): string => {
   const date = new Date(utcDate);
-  // Converter para horário brasileiro (UTC-3)
-  const brazilianTime = new Date(date.getTime() - (3 * 60 * 60 * 1000));
-  return brazilianTime.toISOString().split('T')[0];
+  // Usar o fuso horário brasileiro para extrair a data correta
+  const brazilianDateString = date.toLocaleDateString('pt-BR', {
+    timeZone: 'America/Sao_Paulo'
+  });
+  
+  // Converter formato dd/mm/yyyy para yyyy-mm-dd
+  const [day, month, year] = brazilianDateString.split('/');
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 };
 
 export const formatBrazilianDate = (dateString: string): string => {
@@ -27,22 +32,41 @@ export const formatBrazilianDateTime = (dateString: string): string => {
 };
 
 export const getBrazilianDateRange = (date: string) => {
+  // Criar o início e fim do dia no fuso horário brasileiro
+  const startDate = new Date(`${date}T00:00:00`);
+  const endDate = new Date(`${date}T23:59:59`);
+  
+  // Ajustar para UTC considerando o fuso horário brasileiro (UTC-3)
+  const utcStart = new Date(startDate.getTime() + (3 * 60 * 60 * 1000));
+  const utcEnd = new Date(endDate.getTime() + (3 * 60 * 60 * 1000));
+  
   return {
-    start: `${date}T00:00:00-03:00`,
-    end: `${date}T23:59:59-03:00`
+    start: utcStart.toISOString(),
+    end: utcEnd.toISOString()
   };
 };
 
 export const getCurrentBrazilianDate = (): string => {
   const now = new Date();
-  // Converter para horário brasileiro (UTC-3)
-  const brazilianTime = new Date(now.getTime() - (3 * 60 * 60 * 1000));
-  return brazilianTime.toISOString().split('T')[0];
+  const brazilianDateString = now.toLocaleDateString('pt-BR', {
+    timeZone: 'America/Sao_Paulo'
+  });
+  
+  // Converter formato dd/mm/yyyy para yyyy-mm-dd
+  const [day, month, year] = brazilianDateString.split('/');
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 };
 
 export const getYesterdayBrazilianDate = (): string => {
   const now = new Date();
-  // Converter para horário brasileiro (UTC-3) e subtrair 1 dia
-  const brazilianTime = new Date(now.getTime() - (3 * 60 * 60 * 1000) - (24 * 60 * 60 * 1000));
-  return brazilianTime.toISOString().split('T')[0];
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  const brazilianDateString = yesterday.toLocaleDateString('pt-BR', {
+    timeZone: 'America/Sao_Paulo'
+  });
+  
+  // Converter formato dd/mm/yyyy para yyyy-mm-dd
+  const [day, month, year] = brazilianDateString.split('/');
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 };
