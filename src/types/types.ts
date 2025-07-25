@@ -7,6 +7,27 @@ export interface Product {
   categoria: string;
   barcode?: string;
   img: string;
+  estoque_atual?: number;
+  estoque_minimo?: number;
+  estoque_maximo?: number;
+  unidade_medida?: string;
+  fornecedor?: string;
+  descricao?: string;
+  ativo?: boolean;
+}
+
+export interface StockMovement {
+  id: number;
+  produto_id: number;
+  tipo: 'entrada' | 'saida' | 'ajuste';
+  quantidade: number;
+  motivo?: string;
+  created_at: string;
+}
+
+export interface LowStockProduct {
+  produto: Product;
+  quantidade_faltante: number;
 }
 
 export interface ComandaItem {

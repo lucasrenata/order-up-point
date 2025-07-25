@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Barcode, FileText } from 'lucide-react';
+import { Barcode, FileText, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NotificationModal } from '../components/NotificationModal';
 import { PaymentModal } from '../components/PaymentModal';
@@ -308,13 +308,22 @@ export default function Index() {
               />
             </div>
           </div>
-          <button 
-            onClick={handleGenerateReport} 
-            className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-lg"
-          >
-            <FileText size={18} />
-            Gerar Relatório
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => navigate('/estoque')} 
+              className="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 shadow-lg"
+            >
+              <Package size={18} />
+              Estoque
+            </button>
+            <button 
+              onClick={handleGenerateReport} 
+              className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-lg"
+            >
+              <FileText size={18} />
+              Relatório
+            </button>
+          </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: 'calc(100vh - 180px)' }}>
