@@ -19,10 +19,10 @@ export default function Index() {
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const showNotification = (message: string, type: 'info' | 'error' | 'success' = 'info') => {
+  const showNotification = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
     setNotification({ message, type });
     toast[type](message);
-  };
+  }, []);
 
   const fetchProducts = useCallback(async () => {
     const { data, error } = await supabase.from('produtos').select('*');
@@ -232,59 +232,112 @@ export default function Index() {
     }
   };
 
-  const processStockReduction = async (comanda: Comanda) => {
-    const stockUpdates = [];
-    const lowStockAlerts = [];
+  const processStockReduction = useCallback(async (comanda: Comanda) => {
+    console.log('🔄 Iniciando processamento de redução de estoque...');
+    
+    // Consolidar quantidades por produto para evitar updates múltiplos
+    const produtoQuantidades = new Map<number, number>();
     
     for (const item of comanda.comanda_itens) {
-      // Processar apenas itens com produto_id (produtos reais, não "Prato por Quilo")
       if (item.produto_id) {
+        const quantidadeAtual = produtoQuantidades.get(item.produto_id) || 0;
+        produtoQuantidades.set(item.produto_id, quantidadeAtual + item.quantidade);
+      }
+    }
+    
+    const stockUpdates = [];
+    const lowStockAlerts = [];
+    const processedProducts = [];
+    
+    try {
+      // Processar cada produto individualmente
+      for (const [produtoId, quantidade] of produtoQuantidades) {
+        console.log(`📦 Processando produto ID ${produtoId}, quantidade: ${quantidade}`);
+        
         // Buscar produto atual
         const { data: produto, error: productError } = await supabase
           .from('produtos')
           .select('*')
-          .eq('id', item.produto_id)
+          .eq('id', produtoId)
           .single();
         
         if (productError || !produto) {
-          console.error(`Erro ao buscar produto ${item.produto_id}:`, productError);
-          continue;
+          console.error(`❌ Erro ao buscar produto ${produtoId}:`, productError);
+          throw new Error(`Produto não encontrado: ID ${produtoId}`);
+        }
+        
+        // Validar estoque disponível
+        if (produto.estoque_atual < quantidade) {
+          throw new Error(`Estoque insuficiente para ${produto.nome}. Disponível: ${produto.estoque_atual}, Necessário: ${quantidade}`);
         }
         
         // Calcular novo estoque
-        const novoEstoque = produto.estoque_atual - item.quantidade;
+        const novoEstoque = produto.estoque_atual - quantidade;
         
-        // Atualizar produto no banco
+        console.log(`📊 ${produto.nome}: ${produto.estoque_atual} → ${novoEstoque} (redução: ${quantidade})`);
+        
+        // Atualizar produto usando update específico
         const { error: updateError } = await supabase
           .from('produtos')
           .update({ estoque_atual: novoEstoque })
-          .eq('id', item.produto_id);
+          .eq('id', produtoId);
         
         if (updateError) {
-          console.error(`Erro ao atualizar estoque do produto ${produto.nome}:`, updateError);
+          console.error(`❌ Erro ao atualizar estoque do produto ${produto.nome}:`, updateError);
           throw new Error(`Falha na baixa do estoque: ${produto.nome}`);
         }
         
+        console.log(`✅ Estoque atualizado: ${produto.nome}`);
+        
         stockUpdates.push({
           produto: produto.nome,
-          quantidade: item.quantidade,
+          quantidade: quantidade,
           estoqueAnterior: produto.estoque_atual,
           estoqueNovo: novoEstoque
         });
         
+        processedProducts.push(produtoId);
+        
         // Verificar se ficou com estoque baixo
-        if (novoEstoque <= produto.estoque_minimo) {
+        if (novoEstoque <= (produto.estoque_minimo || 0)) {
           lowStockAlerts.push(produto.nome);
         }
-        
-        console.log(`📦 Baixa realizada: ${produto.nome} - ${item.quantidade} unidades (${produto.estoque_atual} → ${novoEstoque})`);
       }
+      
+      console.log('✅ Processamento de estoque concluído com sucesso!');
+      return { stockUpdates, lowStockAlerts };
+      
+    } catch (error) {
+      console.error('❌ Erro no processamento de estoque:', error);
+      
+      // Em caso de erro, tentar reverter as operações já processadas
+      console.log('🔄 Tentando reverter operações já processadas...');
+      for (const produtoId of processedProducts) {
+        try {
+          const quantidade = produtoQuantidades.get(produtoId);
+          const { data: produto } = await supabase
+            .from('produtos')
+            .select('estoque_atual')
+            .eq('id', produtoId)
+            .single();
+          
+          if (produto && quantidade) {
+            await supabase
+              .from('produtos')
+              .update({ estoque_atual: produto.estoque_atual + quantidade })
+              .eq('id', produtoId);
+            console.log(`🔄 Reversão aplicada para produto ID ${produtoId}`);
+          }
+        } catch (revertError) {
+          console.error(`❌ Erro ao reverter produto ${produtoId}:`, revertError);
+        }
+      }
+      
+      throw error;
     }
-    
-    return { stockUpdates, lowStockAlerts };
-  };
+  }, []);
 
-  const handleConfirmPayment = async (total: number) => {
+  const handleConfirmPayment = useCallback(async (total: number) => {
     if (!activeComanda) return;
     
     setIsLoading(true);
@@ -342,7 +395,7 @@ export default function Index() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeComanda, processStockReduction, fetchProducts, showNotification]);
 
   const handleGenerateReport = () => {
     navigate('/relatorio');
