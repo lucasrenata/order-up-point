@@ -7,11 +7,13 @@ import { OrderSummary } from '../components/OrderSummary';
 import { InputPanel } from '../components/InputPanel';
 import { supabase } from '../lib/supabase';
 import { Comanda, ComandaItem, Product } from '../types/types';
+import { useStockManager } from '../hooks/useStockManager';
 import { toast } from 'sonner';
 import { getCurrentBrazilianDateTime } from '../utils/dateUtils';
 
 export default function Index() {
   const navigate = useNavigate();
+  const { processStockReduction, isProcessing } = useStockManager();
   const [activeComanda, setActiveComanda] = useState<Comanda | null>(null);
   const [comandaCodeInput, setComandaCodeInput] = useState('');
   const [notification, setNotification] = useState({ message: '', type: 'info' as 'info' | 'error' | 'success' });
@@ -232,76 +234,26 @@ export default function Index() {
     }
   };
 
-  const processStockReduction = async (comanda: Comanda) => {
-    const stockUpdates = [];
-    const lowStockAlerts = [];
-    
-    for (const item of comanda.comanda_itens) {
-      // Processar apenas itens com produto_id (produtos reais, não "Prato por Quilo")
-      if (item.produto_id) {
-        // Buscar produto atual
-        const { data: produto, error: productError } = await supabase
-          .from('produtos')
-          .select('*')
-          .eq('id', item.produto_id)
-          .single();
-        
-        if (productError || !produto) {
-          console.error(`Erro ao buscar produto ${item.produto_id}:`, productError);
-          continue;
-        }
-        
-        // Calcular novo estoque
-        const novoEstoque = produto.estoque_atual - item.quantidade;
-        
-        // Atualizar produto no banco
-        const { error: updateError } = await supabase
-          .from('produtos')
-          .update({ estoque_atual: novoEstoque })
-          .eq('id', item.produto_id);
-        
-        if (updateError) {
-          console.error(`Erro ao atualizar estoque do produto ${produto.nome}:`, updateError);
-          throw new Error(`Falha na baixa do estoque: ${produto.nome}`);
-        }
-        
-        stockUpdates.push({
-          produto: produto.nome,
-          quantidade: item.quantidade,
-          estoqueAnterior: produto.estoque_atual,
-          estoqueNovo: novoEstoque
-        });
-        
-        // Verificar se ficou com estoque baixo
-        if (novoEstoque <= produto.estoque_minimo) {
-          lowStockAlerts.push(produto.nome);
-        }
-        
-        console.log(`📦 Baixa realizada: ${produto.nome} - ${item.quantidade} unidades (${produto.estoque_atual} → ${novoEstoque})`);
-      }
-    }
-    
-    return { stockUpdates, lowStockAlerts };
-  };
 
   const handleConfirmPayment = async (total: number) => {
-    if (!activeComanda) return;
+    if (!activeComanda || isProcessing) return;
     
     setIsLoading(true);
     
     try {
+      console.log(`💳 Processando pagamento: Comanda ${activeComanda.identificador_cliente}`);
+      
+      // Primeiro, processar a baixa no estoque com validação
+      const stockResult = await processStockReduction(activeComanda);
+      
+      if (!stockResult.success) {
+        throw new Error(stockResult.error || 'Erro ao processar baixa no estoque');
+      }
+      
       // Usar data/hora brasileira atual para o pagamento
       const brazilianPaymentDateTime = getCurrentBrazilianDateTime();
       
-      console.log(`💳 Processando pagamento:`);
-      console.log(`  Comanda: ${activeComanda.identificador_cliente}`);
-      console.log(`  Total: ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
-      console.log(`  Data/hora pagamento (BR): ${brazilianPaymentDateTime}`);
-      
-      // Primeiro, processar a baixa no estoque
-      const { stockUpdates, lowStockAlerts } = await processStockReduction(activeComanda);
-      
-      // Depois, confirmar o pagamento
+      // Confirmar o pagamento apenas se a baixa no estoque foi bem-sucedida
       const { error } = await supabase
         .from('comandas')
         .update({ 
@@ -312,33 +264,38 @@ export default function Index() {
         .eq('id', activeComanda.id);
 
       if (error) {
-        console.error('Erro ao finalizar pagamento:', error);
-        showNotification('Erro ao finalizar pagamento.', 'error');
-        return;
+        console.error('❌ Erro ao confirmar pagamento:', error);
+        throw new Error(`Erro ao processar pagamento: ${error.message}`);
       }
+
+      console.log('✅ Pagamento processado com sucesso');
       
-      // Atualizar lista de produtos para refletir novos estoques
+      // Atualizar lista de produtos apenas uma vez
       await fetchProducts();
       
-      console.log('✅ Pagamento finalizado com sucesso!');
-      console.log('📦 Baixas realizadas:', stockUpdates);
+      // Exibir confirmação com detalhes
+      let message = `Pagamento de ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} confirmado!`;
       
-      // Notificação detalhada
-      let message = `Comanda #${activeComanda.identificador_cliente} paga com sucesso!`;
-      if (stockUpdates.length > 0) {
-        message += ` Baixa realizada em ${stockUpdates.length} produto(s).`;
-      }
-      if (lowStockAlerts.length > 0) {
-        message += ` ⚠️ Produtos com estoque baixo: ${lowStockAlerts.join(', ')}.`;
+      if (stockResult.stockUpdates.length > 0) {
+        message += ` Baixa realizada em ${stockResult.stockUpdates.length} produto(s).`;
       }
       
+      if (stockResult.lowStockAlerts.length > 0) {
+        toast.warning(`Estoque baixo: ${stockResult.lowStockAlerts.join(', ')}`);
+      }
+
       showNotification(message, 'success');
+      
+      // Resetar estados
       setActiveComanda(null);
       setPaymentModalOpen(false);
       
     } catch (error) {
-      console.error('Erro no processamento do pagamento:', error);
-      showNotification('Erro ao processar pagamento e baixa do estoque.', 'error');
+      console.error('❌ Erro no processamento do pagamento:', error);
+      showNotification(
+        error instanceof Error ? error.message : 'Erro ao processar pagamento', 
+        'error'
+      );
     } finally {
       setIsLoading(false);
     }
