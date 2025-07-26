@@ -49,13 +49,18 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
               )}
               <div className="flex gap-2">
                 <Button 
-                  onClick={() => window.location.reload()}
+                  onClick={() => {
+                    this.setState({ hasError: false, error: null });
+                    window.history.pushState({}, '', '/');
+                  }}
                   variant="outline"
                 >
-                  Recarregar
+                  Tentar Novamente
                 </Button>
                 <Link to="/">
-                  <Button>Voltar ao Início</Button>
+                  <Button onClick={() => this.setState({ hasError: false, error: null })}>
+                    Voltar ao Início
+                  </Button>
                 </Link>
               </div>
             </CardContent>

@@ -277,8 +277,18 @@ export default function StockPage() {
             categories={categories}
             onSave={handleSaveProduct}
             onCancel={() => {
-              setIsProductFormOpen(false);
-              setEditingProduct(null);
+              console.log('ProductForm onCancel called'); // Debug log
+              try {
+                setIsProductFormOpen(false);
+                setEditingProduct(null);
+              } catch (error) {
+                console.error('Erro ao fechar modal:', error);
+                // Fallback: forçar fechamento após pequeno delay
+                setTimeout(() => {
+                  setIsProductFormOpen(false);
+                  setEditingProduct(null);
+                }, 100);
+              }
             }}
           />
         )}
