@@ -1,5 +1,6 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
 interface NotificationModalProps {
   message: string;
@@ -15,6 +16,12 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ message, o
       mountedRef.current = false;
     };
   }, []);
+
+  const handleClose = useCallback(() => {
+    if (mountedRef.current) {
+      onClose();
+    }
+  }, [onClose]);
   
   if (!message) return null;
   
@@ -33,19 +40,17 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ message, o
   useEffect(() => {
     if (!message) return;
     
-    const timer = setTimeout(() => {
-      if (mountedRef.current) {
-        onClose();
-      }
-    }, 4000);
+    const timer = setTimeout(handleClose, 4000);
     
     return () => clearTimeout(timer);
-  }, [message]);
+  }, [message, handleClose]);
 
-  return (
+  const modalContent = (
     <div className={`fixed top-5 right-5 ${colors[type]} text-white py-4 px-6 rounded-lg shadow-xl animate-bounce z-50 flex items-center gap-2`}>
       <span className="text-lg">{icons[type]}</span>
       <p className="font-semibold">{message}</p>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };

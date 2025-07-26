@@ -26,21 +26,31 @@ export class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center">
-            <AlertTriangle className="mx-auto text-red-500 mb-4" size={48} />
-            <h1 className="text-xl font-bold text-red-600 mb-2">
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="bg-card rounded-lg shadow-xl p-8 max-w-md w-full text-center border">
+            <AlertTriangle className="mx-auto text-destructive mb-4" size={48} />
+            <h1 className="text-xl font-bold text-destructive mb-2">
               Ops! Algo deu errado
             </h1>
-            <p className="text-gray-600 mb-6">
-              Ocorreu um erro inesperado na aplicação. Por favor, recarregue a página.
+            <p className="text-muted-foreground mb-6">
+              Ocorreu um erro inesperado. Tente recarregar a página.
             </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-colors"
-            >
-              Recarregar Página
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  this.setState({ hasError: false, error: undefined });
+                }}
+                className="w-full bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
+              >
+                Tentar Novamente
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full bg-secondary text-secondary-foreground px-4 py-2 rounded-md hover:bg-secondary/80 transition-colors"
+              >
+                Recarregar Página
+              </button>
+            </div>
           </div>
         </div>
       );

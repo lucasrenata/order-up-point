@@ -233,106 +233,50 @@ export default function Index() {
   };
 
   const processStockReduction = useCallback(async (comanda: Comanda) => {
-    console.log('🔄 Iniciando processamento de redução de estoque...');
-    
-    // Consolidar quantidades por produto para evitar updates múltiplos
-    const produtoQuantidades = new Map<number, number>();
-    
-    for (const item of comanda.comanda_itens) {
-      if (item.produto_id) {
-        const quantidadeAtual = produtoQuantidades.get(item.produto_id) || 0;
-        produtoQuantidades.set(item.produto_id, quantidadeAtual + item.quantidade);
-      }
-    }
-    
-    const stockUpdates = [];
-    const lowStockAlerts = [];
-    const processedProducts = [];
-    
     try {
-      // Processar cada produto individualmente
-      for (const [produtoId, quantidade] of produtoQuantidades) {
-        console.log(`📦 Processando produto ID ${produtoId}, quantidade: ${quantidade}`);
-        
-        // Buscar produto atual
-        const { data: produto, error: productError } = await supabase
+      // Agrupar itens por produto para evitar múltiplas atualizações
+      const produtoQuantidades = new Map<number, number>();
+      
+      comanda.comanda_itens.forEach(item => {
+        if (item.produto_id) {
+          const quantidadeAtual = produtoQuantidades.get(item.produto_id) || 0;
+          produtoQuantidades.set(item.produto_id, quantidadeAtual + item.quantidade);
+        }
+      });
+
+      // Executar todas as operações em paralelo com verificação atômica
+      const updatePromises = Array.from(produtoQuantidades.entries()).map(async ([produtoId, quantidade]) => {
+        const { data: produto, error: fetchError } = await supabase
           .from('produtos')
-          .select('*')
+          .select('estoque_atual, nome')
           .eq('id', produtoId)
           .single();
+
+        if (fetchError) throw new Error(`Erro ao buscar produto ${produtoId}: ${fetchError.message}`);
         
-        if (productError || !produto) {
-          console.error(`❌ Erro ao buscar produto ${produtoId}:`, productError);
-          throw new Error(`Produto não encontrado: ID ${produtoId}`);
-        }
+        const novoEstoque = (produto.estoque_atual || 0) - quantidade;
         
-        // Validar estoque disponível
-        if (produto.estoque_atual < quantidade) {
+        if (novoEstoque < 0) {
           throw new Error(`Estoque insuficiente para ${produto.nome}. Disponível: ${produto.estoque_atual}, Necessário: ${quantidade}`);
         }
-        
-        // Calcular novo estoque
-        const novoEstoque = produto.estoque_atual - quantidade;
-        
-        console.log(`📊 ${produto.nome}: ${produto.estoque_atual} → ${novoEstoque} (redução: ${quantidade})`);
-        
-        // Atualizar produto usando update específico
+
         const { error: updateError } = await supabase
           .from('produtos')
           .update({ estoque_atual: novoEstoque })
           .eq('id', produtoId);
-        
+
         if (updateError) {
-          console.error(`❌ Erro ao atualizar estoque do produto ${produto.nome}:`, updateError);
-          throw new Error(`Falha na baixa do estoque: ${produto.nome}`);
+          throw new Error(`Erro ao atualizar estoque do produto ${produto.nome}: ${updateError.message}`);
         }
         
-        console.log(`✅ Estoque atualizado: ${produto.nome}`);
-        
-        stockUpdates.push({
-          produto: produto.nome,
-          quantidade: quantidade,
-          estoqueAnterior: produto.estoque_atual,
-          estoqueNovo: novoEstoque
-        });
-        
-        processedProducts.push(produtoId);
-        
-        // Verificar se ficou com estoque baixo
-        if (novoEstoque <= (produto.estoque_minimo || 0)) {
-          lowStockAlerts.push(produto.nome);
-        }
-      }
-      
-      console.log('✅ Processamento de estoque concluído com sucesso!');
-      return { stockUpdates, lowStockAlerts };
+        console.log(`Estoque atualizado - ${produto.nome}: ${produto.estoque_atual} -> ${novoEstoque}`);
+        return { produtoId, novoEstoque };
+      });
+
+      await Promise.all(updatePromises);
       
     } catch (error) {
-      console.error('❌ Erro no processamento de estoque:', error);
-      
-      // Em caso de erro, tentar reverter as operações já processadas
-      console.log('🔄 Tentando reverter operações já processadas...');
-      for (const produtoId of processedProducts) {
-        try {
-          const quantidade = produtoQuantidades.get(produtoId);
-          const { data: produto } = await supabase
-            .from('produtos')
-            .select('estoque_atual')
-            .eq('id', produtoId)
-            .single();
-          
-          if (produto && quantidade) {
-            await supabase
-              .from('produtos')
-              .update({ estoque_atual: produto.estoque_atual + quantidade })
-              .eq('id', produtoId);
-            console.log(`🔄 Reversão aplicada para produto ID ${produtoId}`);
-          }
-        } catch (revertError) {
-          console.error(`❌ Erro ao reverter produto ${produtoId}:`, revertError);
-        }
-      }
-      
+      console.error('Erro na redução de estoque:', error);
       throw error;
     }
   }, []);
@@ -352,7 +296,7 @@ export default function Index() {
       console.log(`  Data/hora pagamento (BR): ${brazilianPaymentDateTime}`);
       
       // Primeiro, processar a baixa no estoque
-      const { stockUpdates, lowStockAlerts } = await processStockReduction(activeComanda);
+      await processStockReduction(activeComanda);
       
       // Depois, confirmar o pagamento
       const { error } = await supabase
@@ -374,18 +318,8 @@ export default function Index() {
       await fetchProducts();
       
       console.log('✅ Pagamento finalizado com sucesso!');
-      console.log('📦 Baixas realizadas:', stockUpdates);
       
-      // Notificação detalhada
-      let message = `Comanda #${activeComanda.identificador_cliente} paga com sucesso!`;
-      if (stockUpdates.length > 0) {
-        message += ` Baixa realizada em ${stockUpdates.length} produto(s).`;
-      }
-      if (lowStockAlerts.length > 0) {
-        message += ` ⚠️ Produtos com estoque baixo: ${lowStockAlerts.join(', ')}.`;
-      }
-      
-      showNotification(message, 'success');
+      showNotification(`Comanda #${activeComanda.identificador_cliente} paga com sucesso!`, 'success');
       setActiveComanda(null);
       setPaymentModalOpen(false);
       
