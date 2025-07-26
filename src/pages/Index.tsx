@@ -7,13 +7,11 @@ import { OrderSummary } from '../components/OrderSummary';
 import { InputPanel } from '../components/InputPanel';
 import { supabase } from '../lib/supabase';
 import { Comanda, ComandaItem, Product } from '../types/types';
-import { useStockManager } from '../hooks/useStockManager';
 import { toast } from 'sonner';
 import { getCurrentBrazilianDateTime } from '../utils/dateUtils';
 
 export default function Index() {
   const navigate = useNavigate();
-  const { processStockReduction, isProcessing } = useStockManager();
   const [activeComanda, setActiveComanda] = useState<Comanda | null>(null);
   const [comandaCodeInput, setComandaCodeInput] = useState('');
   const [notification, setNotification] = useState({ message: '', type: 'info' as 'info' | 'error' | 'success' });
@@ -234,70 +232,35 @@ export default function Index() {
     }
   };
 
-
   const handleConfirmPayment = async (total: number) => {
-    if (!activeComanda || isProcessing) return;
+    if (!activeComanda) return;
     
-    setIsLoading(true);
+    // Usar data/hora brasileira atual para o pagamento
+    const brazilianPaymentDateTime = getCurrentBrazilianDateTime();
     
-    try {
-      console.log(`💳 Processando pagamento: Comanda ${activeComanda.identificador_cliente}`);
-      
-      // Primeiro, processar a baixa no estoque com validação
-      const stockResult = await processStockReduction(activeComanda);
-      
-      if (!stockResult.success) {
-        throw new Error(stockResult.error || 'Erro ao processar baixa no estoque');
-      }
-      
-      // Usar data/hora brasileira atual para o pagamento
-      const brazilianPaymentDateTime = getCurrentBrazilianDateTime();
-      
-      // Confirmar o pagamento apenas se a baixa no estoque foi bem-sucedida
-      const { error } = await supabase
-        .from('comandas')
-        .update({ 
-          status: 'paga', 
-          total: total, 
-          data_pagamento: brazilianPaymentDateTime
-        })
-        .eq('id', activeComanda.id);
+    console.log(`💳 Processando pagamento:`);
+    console.log(`  Comanda: ${activeComanda.identificador_cliente}`);
+    console.log(`  Total: ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
+    console.log(`  Data/hora pagamento (BR): ${brazilianPaymentDateTime}`);
+    console.log(`  Data/hora pagamento (UTC): ${new Date(brazilianPaymentDateTime).toISOString()}`);
+    
+    const { error } = await supabase
+      .from('comandas')
+      .update({ 
+        status: 'paga', 
+        total: total, 
+        data_pagamento: brazilianPaymentDateTime
+      })
+      .eq('id', activeComanda.id);
 
-      if (error) {
-        console.error('❌ Erro ao confirmar pagamento:', error);
-        throw new Error(`Erro ao processar pagamento: ${error.message}`);
-      }
-
-      console.log('✅ Pagamento processado com sucesso');
-      
-      // Atualizar lista de produtos apenas uma vez
-      await fetchProducts();
-      
-      // Exibir confirmação com detalhes
-      let message = `Pagamento de ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} confirmado!`;
-      
-      if (stockResult.stockUpdates.length > 0) {
-        message += ` Baixa realizada em ${stockResult.stockUpdates.length} produto(s).`;
-      }
-      
-      if (stockResult.lowStockAlerts.length > 0) {
-        toast.warning(`Estoque baixo: ${stockResult.lowStockAlerts.join(', ')}`);
-      }
-
-      showNotification(message, 'success');
-      
-      // Resetar estados
+    if (error) {
+      console.error('Erro ao finalizar pagamento:', error);
+      showNotification('Erro ao finalizar pagamento.', 'error');
+    } else {
+      console.log('✅ Pagamento finalizado com sucesso!');
+      showNotification(`Comanda #${activeComanda.identificador_cliente} paga com sucesso!`, 'success');
       setActiveComanda(null);
       setPaymentModalOpen(false);
-      
-    } catch (error) {
-      console.error('❌ Erro no processamento do pagamento:', error);
-      showNotification(
-        error instanceof Error ? error.message : 'Erro ao processar pagamento', 
-        'error'
-      );
-    } finally {
-      setIsLoading(false);
     }
   };
 
