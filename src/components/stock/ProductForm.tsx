@@ -19,11 +19,11 @@ interface ProductFormProps {
 export function ProductForm({ product, categories, onSave, onCancel }: ProductFormProps) {
   const [formData, setFormData] = useState({
     nome: '',
-    preco: ,
+    preco: '',
     categoria: '',
     barcode: '',
     img: '📦',
-    estoque_atual: ,
+    estoque_atual: 0,
     estoque_minimo: 5,
     estoque_maximo: 100,
     unidade_medida: 'unidade',
