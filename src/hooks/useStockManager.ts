@@ -53,34 +53,76 @@ export const useStockManager = () => {
         throw new Error('Nenhum produto encontrado');
       }
 
+      // Consolidar quantidades por produto (caso haja produtos duplicados)
+      const produtoQuantidades = new Map<number, number>();
+      for (const item of itemsWithProducts) {
+        const quantidadeAtual = produtoQuantidades.get(item.produto_id!) || 0;
+        produtoQuantidades.set(item.produto_id!, quantidadeAtual + item.quantidade);
+      }
+
       // Calcular atualizações necessárias
-      const updates = [];
       const stockUpdates: StockUpdate[] = [];
       const lowStockAlerts: string[] = [];
+      const updatedProducts: number[] = [];
 
-      for (const item of itemsWithProducts) {
-        const produto = produtos.find(p => p.id === item.produto_id);
+      // Validar estoque disponível antes de qualquer operação
+      for (const [produtoId, quantidadeTotal] of produtoQuantidades) {
+        const produto = produtos.find(p => p.id === produtoId);
         
         if (!produto) {
-          console.warn(`⚠️ Produto ${item.produto_id} não encontrado`);
+          console.warn(`⚠️ Produto ${produtoId} não encontrado`);
           continue;
         }
 
-        // Validar estoque disponível
-        if (produto.estoque_atual < item.quantidade) {
-          throw new Error(`Estoque insuficiente para ${produto.nome}. Disponível: ${produto.estoque_atual}, Necessário: ${item.quantidade}`);
+        if (produto.estoque_atual < quantidadeTotal) {
+          throw new Error(`Estoque insuficiente para ${produto.nome}. Disponível: ${produto.estoque_atual}, Necessário: ${quantidadeTotal}`);
+        }
+      }
+
+      // Executar atualizações sequenciais com rollback em caso de erro
+      for (const [produtoId, quantidadeTotal] of produtoQuantidades) {
+        const produto = produtos.find(p => p.id === produtoId);
+        
+        if (!produto) continue;
+
+        const novoEstoque = produto.estoque_atual - quantidadeTotal;
+
+        console.log(`📦 Atualizando estoque: ${produto.nome} - ${quantidadeTotal} unidades (${produto.estoque_atual} → ${novoEstoque})`);
+
+        // Usar UPDATE em vez de UPSERT para produtos existentes
+        const { error: updateError } = await supabase
+          .from('produtos')
+          .update({ estoque_atual: novoEstoque })
+          .eq('id', produtoId);
+
+        if (updateError) {
+          console.error(`❌ Erro ao atualizar produto ${produto.nome}:`, updateError);
+          
+          // Reverter produtos já atualizados
+          if (updatedProducts.length > 0) {
+            console.log('🔄 Revertendo atualizações...');
+            for (const revertId of updatedProducts) {
+              const produtoRevert = produtos.find(p => p.id === revertId);
+              if (produtoRevert) {
+                const quantidadeRevert = produtoQuantidades.get(revertId) || 0;
+                await supabase
+                  .from('produtos')
+                  .update({ estoque_atual: produtoRevert.estoque_atual })
+                  .eq('id', revertId);
+                console.log(`↩️ Revertido: ${produtoRevert.nome}`);
+              }
+            }
+          }
+          
+          throw new Error(`Erro ao atualizar estoque do produto ${produto.nome}: ${updateError.message}`);
         }
 
-        const novoEstoque = produto.estoque_atual - item.quantidade;
-
-        updates.push({
-          id: produto.id,
-          estoque_atual: novoEstoque
-        });
+        // Registrar produto atualizado para possível rollback
+        updatedProducts.push(produtoId);
 
         stockUpdates.push({
           produto: produto.nome,
-          quantidade: item.quantidade,
+          quantidade: quantidadeTotal,
           estoqueAnterior: produto.estoque_atual,
           estoqueNovo: novoEstoque
         });
@@ -89,18 +131,6 @@ export const useStockManager = () => {
         if (novoEstoque <= (produto.estoque_minimo || 0)) {
           lowStockAlerts.push(produto.nome);
         }
-
-        console.log(`📦 Preparando baixa: ${produto.nome} - ${item.quantidade} unidades (${produto.estoque_atual} → ${novoEstoque})`);
-      }
-
-      // Executar todas as atualizações em uma única operação usando upsert
-      const { error: updateError } = await supabase
-        .from('produtos')
-        .upsert(updates, { onConflict: 'id' });
-
-      if (updateError) {
-        console.error('❌ Erro ao atualizar estoque:', updateError);
-        throw new Error(`Erro ao atualizar estoque: ${updateError.message}`);
       }
 
       console.log('✅ Baixa no estoque processada com sucesso');
