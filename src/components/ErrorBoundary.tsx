@@ -1,57 +1,70 @@
 import React from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ErrorBoundaryState {
   hasError: boolean;
-  error?: Error;
+  error: Error | null;
 }
 
-export class ErrorBoundary extends React.Component<
-  React.PropsWithChildren<{}>,
-  ErrorBoundaryState
-> {
-  constructor(props: React.PropsWithChildren<{}>) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    console.error('ErrorBoundary caught an error:', error);
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
+    console.error('ErrorBoundary error details:', error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
-          <div className="bg-card rounded-lg shadow-xl p-8 max-w-md w-full text-center border">
-            <AlertTriangle className="mx-auto text-destructive mb-4" size={48} />
-            <h1 className="text-xl font-bold text-destructive mb-2">
-              Ops! Algo deu errado
-            </h1>
-            <p className="text-muted-foreground mb-6">
-              Ocorreu um erro inesperado. Tente recarregar a página.
-            </p>
-            <div className="space-y-2">
-              <button
-                onClick={() => {
-                  this.setState({ hasError: false, error: undefined });
-                }}
-                className="w-full bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
-              >
-                Tentar Novamente
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                className="w-full bg-secondary text-secondary-foreground px-4 py-2 rounded-md hover:bg-secondary/80 transition-colors"
-              >
-                Recarregar Página
-              </button>
-            </div>
-          </div>
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="text-destructive">Ops! Algo deu errado</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Ocorreu um erro inesperado. Tente recarregar a página ou voltar ao início.
+              </p>
+              {process.env.NODE_ENV === 'development' && this.state.error && (
+                <details className="text-xs text-muted-foreground">
+                  <summary>Detalhes do erro (apenas desenvolvimento)</summary>
+                  <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto">
+                    {this.state.error.stack}
+                  </pre>
+                </details>
+              )}
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => {
+                    this.setState({ hasError: false, error: null });
+                    window.history.pushState({}, '', '/');
+                  }}
+                  variant="outline"
+                >
+                  Tentar Novamente
+                </Button>
+                <Link to="/">
+                  <Button onClick={() => this.setState({ hasError: false, error: null })}>
+                    Voltar ao Início
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       );
     }
@@ -59,3 +72,5 @@ export class ErrorBoundary extends React.Component<
     return this.props.children;
   }
 }
+
+export default ErrorBoundary;

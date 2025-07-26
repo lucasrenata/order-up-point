@@ -55,7 +55,12 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    console.log('ProductForm submit called'); // Debug log
+    try {
+      onSave(formData);
+    } catch (error) {
+      console.error('Erro ao salvar produto:', error);
+    }
   };
 
   const handleScanBarcode = async () => {
@@ -90,7 +95,16 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
             <CardTitle>
               {product ? 'Editar Produto' : 'Novo Produto'}
             </CardTitle>
-            <Button variant="ghost" size="sm" onClick={onCancel}>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('ProductForm close button clicked'); // Debug log
+                onCancel();
+              }}
+            >
               <X className="w-4 h-4" />
             </Button>
           </div>
@@ -261,7 +275,16 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
               <Button type="submit" className="flex-1">
                 {product ? 'Atualizar' : 'Cadastrar'} Produto
               </Button>
-              <Button type="button" variant="outline" onClick={onCancel}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('ProductForm cancel button clicked'); // Debug log
+                  onCancel();
+                }}
+              >
                 Cancelar
               </Button>
             </div>

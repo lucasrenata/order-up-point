@@ -7,11 +7,13 @@ import { OrderSummary } from '../components/OrderSummary';
 import { InputPanel } from '../components/InputPanel';
 import { supabase } from '../lib/supabase';
 import { Comanda, ComandaItem, Product } from '../types/types';
+import { useStockManager } from '../hooks/useStockManager';
 import { toast } from 'sonner';
 import { getCurrentBrazilianDateTime } from '../utils/dateUtils';
 
 export default function Index() {
   const navigate = useNavigate();
+  const { processStockReduction, isProcessing } = useStockManager();
   const [activeComanda, setActiveComanda] = useState<Comanda | null>(null);
   const [comandaCodeInput, setComandaCodeInput] = useState('');
   const [notification, setNotification] = useState({ message: '', type: 'info' as 'info' | 'error' | 'success' });
@@ -19,10 +21,10 @@ export default function Index() {
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const showNotification = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
+  const showNotification = (message: string, type: 'info' | 'error' | 'success' = 'info') => {
     setNotification({ message, type });
     toast[type](message);
-  }, []);
+  };
 
   const fetchProducts = useCallback(async () => {
     const { data, error } = await supabase.from('produtos').select('*');
@@ -232,73 +234,26 @@ export default function Index() {
     }
   };
 
-  const processStockReduction = useCallback(async (comanda: Comanda) => {
-    try {
-      // Agrupar itens por produto para evitar múltiplas atualizações
-      const produtoQuantidades = new Map<number, number>();
-      
-      comanda.comanda_itens.forEach(item => {
-        if (item.produto_id) {
-          const quantidadeAtual = produtoQuantidades.get(item.produto_id) || 0;
-          produtoQuantidades.set(item.produto_id, quantidadeAtual + item.quantidade);
-        }
-      });
 
-      // Executar todas as operações em paralelo com verificação atômica
-      const updatePromises = Array.from(produtoQuantidades.entries()).map(async ([produtoId, quantidade]) => {
-        const { data: produto, error: fetchError } = await supabase
-          .from('produtos')
-          .select('estoque_atual, nome')
-          .eq('id', produtoId)
-          .single();
-
-        if (fetchError) throw new Error(`Erro ao buscar produto ${produtoId}: ${fetchError.message}`);
-        
-        const novoEstoque = (produto.estoque_atual || 0) - quantidade;
-        
-        if (novoEstoque < 0) {
-          throw new Error(`Estoque insuficiente para ${produto.nome}. Disponível: ${produto.estoque_atual}, Necessário: ${quantidade}`);
-        }
-
-        const { error: updateError } = await supabase
-          .from('produtos')
-          .update({ estoque_atual: novoEstoque })
-          .eq('id', produtoId);
-
-        if (updateError) {
-          throw new Error(`Erro ao atualizar estoque do produto ${produto.nome}: ${updateError.message}`);
-        }
-        
-        console.log(`Estoque atualizado - ${produto.nome}: ${produto.estoque_atual} -> ${novoEstoque}`);
-        return { produtoId, novoEstoque };
-      });
-
-      await Promise.all(updatePromises);
-      
-    } catch (error) {
-      console.error('Erro na redução de estoque:', error);
-      throw error;
-    }
-  }, []);
-
-  const handleConfirmPayment = useCallback(async (total: number) => {
-    if (!activeComanda) return;
+  const handleConfirmPayment = async (total: number) => {
+    if (!activeComanda || isProcessing) return;
     
     setIsLoading(true);
     
     try {
+      console.log(`💳 Processando pagamento: Comanda ${activeComanda.identificador_cliente}`);
+      
+      // Primeiro, processar a baixa no estoque com validação
+      const stockResult = await processStockReduction(activeComanda);
+      
+      if (!stockResult.success) {
+        throw new Error(stockResult.error || 'Erro ao processar baixa no estoque');
+      }
+      
       // Usar data/hora brasileira atual para o pagamento
       const brazilianPaymentDateTime = getCurrentBrazilianDateTime();
       
-      console.log(`💳 Processando pagamento:`);
-      console.log(`  Comanda: ${activeComanda.identificador_cliente}`);
-      console.log(`  Total: ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
-      console.log(`  Data/hora pagamento (BR): ${brazilianPaymentDateTime}`);
-      
-      // Primeiro, processar a baixa no estoque
-      await processStockReduction(activeComanda);
-      
-      // Depois, confirmar o pagamento
+      // Confirmar o pagamento apenas se a baixa no estoque foi bem-sucedida
       const { error } = await supabase
         .from('comandas')
         .update({ 
@@ -309,27 +264,42 @@ export default function Index() {
         .eq('id', activeComanda.id);
 
       if (error) {
-        console.error('Erro ao finalizar pagamento:', error);
-        showNotification('Erro ao finalizar pagamento.', 'error');
-        return;
+        console.error('❌ Erro ao confirmar pagamento:', error);
+        throw new Error(`Erro ao processar pagamento: ${error.message}`);
       }
+
+      console.log('✅ Pagamento processado com sucesso');
       
-      // Atualizar lista de produtos para refletir novos estoques
+      // Atualizar lista de produtos apenas uma vez
       await fetchProducts();
       
-      console.log('✅ Pagamento finalizado com sucesso!');
+      // Exibir confirmação com detalhes
+      let message = `Pagamento de ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} confirmado!`;
       
-      showNotification(`Comanda #${activeComanda.identificador_cliente} paga com sucesso!`, 'success');
+      if (stockResult.stockUpdates.length > 0) {
+        message += ` Baixa realizada em ${stockResult.stockUpdates.length} produto(s).`;
+      }
+      
+      if (stockResult.lowStockAlerts.length > 0) {
+        toast.warning(`Estoque baixo: ${stockResult.lowStockAlerts.join(', ')}`);
+      }
+
+      showNotification(message, 'success');
+      
+      // Resetar estados
       setActiveComanda(null);
       setPaymentModalOpen(false);
       
     } catch (error) {
-      console.error('Erro no processamento do pagamento:', error);
-      showNotification('Erro ao processar pagamento e baixa do estoque.', 'error');
+      console.error('❌ Erro no processamento do pagamento:', error);
+      showNotification(
+        error instanceof Error ? error.message : 'Erro ao processar pagamento', 
+        'error'
+      );
     } finally {
       setIsLoading(false);
     }
-  }, [activeComanda, processStockReduction, fetchProducts, showNotification]);
+  };
 
   const handleGenerateReport = () => {
     navigate('/relatorio');
