@@ -123,7 +123,7 @@ export default function StockPage() {
     try {
       const { error } = await supabase
         .from('produtos')
-        .delete({ ativo: false })
+        .update({ ativo: false })
         .eq('id', productId);
 
       if (error) throw error;
