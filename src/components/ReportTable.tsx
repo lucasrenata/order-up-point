@@ -23,6 +23,23 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
     return produto?.img || '🍽️';
   };
 
+  const getPaymentMethodDisplay = (forma_pagamento: string | null) => {
+    if (!forma_pagamento) return { icon: '❓', text: 'Não informado', color: 'text-gray-500' };
+    
+    switch (forma_pagamento) {
+      case 'dinheiro':
+        return { icon: '💵', text: 'Dinheiro', color: 'text-green-600' };
+      case 'pix':
+        return { icon: '📱', text: 'Pix', color: 'text-blue-600' };
+      case 'debito':
+        return { icon: '💳', text: 'Cartão Débito', color: 'text-purple-600' };
+      case 'credito':
+        return { icon: '🏦', text: 'Cartão Crédito', color: 'text-orange-600' };
+      default:
+        return { icon: '❓', text: 'Não informado', color: 'text-gray-500' };
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
       <div className="p-4 sm:p-6 border-b border-gray-200">
@@ -71,6 +88,12 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
                       </div>
                       <div className="text-xs sm:text-sm text-gray-500">
                         {comanda.comanda_itens?.length || 0} item(s)
+                      </div>
+                      <div className="text-xs flex items-center gap-1 mt-1">
+                        <span className="text-sm">{getPaymentMethodDisplay(comanda.forma_pagamento).icon}</span>
+                        <span className={`hidden sm:inline ${getPaymentMethodDisplay(comanda.forma_pagamento).color}`}>
+                          {getPaymentMethodDisplay(comanda.forma_pagamento).text}
+                        </span>
                       </div>
                     </div>
                   </div>
