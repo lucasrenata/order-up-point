@@ -47,5 +47,6 @@ export interface Comanda {
   status: 'aberta' | 'paga' | 'cancelada';
   total: number | null;
   data_pagamento: string | null;
+  forma_pagamento?: 'dinheiro' | 'pix' | 'debito' | 'credito' | null;
   comanda_itens: ComandaItem[];
 }

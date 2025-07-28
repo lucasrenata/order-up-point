@@ -235,7 +235,7 @@ export default function Index() {
   };
 
 
-  const handleConfirmPayment = async (total: number) => {
+  const handleConfirmPayment = async (total: number, formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito') => {
     if (!activeComanda || isProcessing) return;
     
     setIsLoading(true);
@@ -259,7 +259,8 @@ export default function Index() {
         .update({ 
           status: 'paga', 
           total: total, 
-          data_pagamento: brazilianPaymentDateTime
+          data_pagamento: brazilianPaymentDateTime,
+          forma_pagamento: formaPagamento
         })
         .eq('id', activeComanda.id);
 
