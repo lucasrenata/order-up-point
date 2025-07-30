@@ -158,3 +158,51 @@ export const stringToDateBrazilian = (dateString: string): Date => {
   const date = new Date(`${dateString}T12:00:00`);
   return date;
 };
+
+/**
+ * Formatar data diretamente sem conversão de timezone (dados já estão em UTC-3)
+ */
+export const formatBrazilianDateDirect = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
+
+/**
+ * Formatar data e hora diretamente sem conversão de timezone (dados já estão em UTC-3)
+ */
+export const formatBrazilianDateTimeDirect = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+/**
+ * Obter range direto para busca (dados já estão em UTC-3)
+ */
+export const getBrazilianDateRangeDirect = (brazilianDate: string) => {
+  console.log(`🔍 Calculando range direto para data brasileira: ${brazilianDate}`);
+  
+  // Como os dados já estão em UTC-3, usamos range direto
+  const startDate = `${brazilianDate}T00:00:00.000`;
+  const endDate = `${brazilianDate}T23:59:59.999`;
+  
+  const result = {
+    start: startDate,
+    end: endDate
+  };
+  
+  console.log(`🌍 Range direto (dados já em UTC-3):`);
+  console.log(`  Início: ${result.start}`);
+  console.log(`  Fim: ${result.end}`);
+  
+  return result;
+};

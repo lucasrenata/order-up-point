@@ -1,6 +1,6 @@
 import React from 'react';
 import { DollarSign, Package, TrendingUp, Award } from 'lucide-react';
-import { formatBrazilianDate } from '../utils/dateUtils';
+import { formatBrazilianDateDirect } from '../utils/dateUtils';
 
 interface ReportSummaryProps {
   data: {
@@ -15,8 +15,8 @@ interface ReportSummaryProps {
 
 export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate }) => {
   const displayDate = data.comandas.length > 0 
-    ? formatBrazilianDate(data.comandas[0].data_pagamento || data.comandas[0].created_at)
-    : formatBrazilianDate(selectedDate + 'T00:00:00Z');
+    ? formatBrazilianDateDirect(data.comandas[0].data_pagamento || data.comandas[0].created_at)
+    : formatBrazilianDateDirect(selectedDate + 'T00:00:00');
 
   return (
     <div className="mb-8">
