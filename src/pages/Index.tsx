@@ -337,12 +337,14 @@ export default function Index() {
             <div className="relative">
               <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               <input 
+                id="comanda-input"
                 type="text" 
                 value={comandaCodeInput} 
                 onChange={(e) => setComandaCodeInput(e.target.value)} 
                 onKeyDown={handleActivateComanda} 
                 placeholder="Ler código da COMANDA e pressionar Enter" 
                 className="w-full md:w-96 bg-white border border-gray-300 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                aria-label="Campo para inserir código da comanda"
               />
             </div>
           </div>

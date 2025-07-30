@@ -82,6 +82,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, 
           <div className="relative flex-grow">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-sm sm:text-base">R$</span>
             <input 
+              id="valor-peso"
               type="text" 
               value={valorPeso} 
               onChange={(e) => setValorPeso(e.target.value)} 
@@ -89,6 +90,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, 
               placeholder="0,00" 
               className="w-full bg-gray-50 border border-gray-300 rounded-lg py-2 sm:py-3 pl-8 sm:pl-10 pr-3 sm:pr-4 text-base sm:text-lg font-bold focus:outline-none focus:ring-2 focus:ring-blue-500" 
               disabled={!activeComandaId}
+              aria-label="Valor do prato por peso em reais"
             />
           </div>
           <button 
@@ -110,6 +112,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, 
           <span className="text-sm sm:text-base">Adicionar por Código</span>
         </h3>
         <input 
+          id="scanner-barcode"
           type="text" 
           value={scannedBarcode} 
           onChange={(e) => setScannedBarcode(e.target.value)} 
@@ -117,6 +120,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, 
           placeholder="Leia o código de barras do produto aqui" 
           className="w-full bg-gray-50 border border-gray-300 rounded-lg py-2 sm:py-3 px-3 sm:px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base" 
           disabled={!activeComandaId}
+          aria-label="Campo para inserir código de barras do produto"
         />
       </div>
 
