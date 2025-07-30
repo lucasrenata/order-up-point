@@ -11,7 +11,7 @@ interface ReportData {
   totalVendas: number;
   totalItens: number;
   ticketMedio: number;
-  produtosMaisVendidos: { produto: Product; quantidade: number }[];
+  formasPagamento: { forma: string; quantidade: number; icon: string; color: string }[];
 }
 
 export const useReportData = (selectedDate: string) => {
@@ -116,26 +116,42 @@ export const useReportData = (selectedDate: string) => {
       console.log('🎯 Ticket médio:', ticketMedio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
       console.log('📋 Comandas encontradas:', comandas?.length || 0);
 
-      // Calcular produtos mais vendidos
-      const produtoQuantidades: { [key: number]: number } = {};
+      // Função para obter dados da forma de pagamento
+      const getPaymentMethodDisplay = (forma_pagamento: string | null) => {
+        switch (forma_pagamento) {
+          case 'dinheiro':
+            return { icon: '💵', text: 'Dinheiro', color: 'text-green-600' };
+          case 'pix':
+            return { icon: '📱', text: 'Pix', color: 'text-blue-600' };
+          case 'debito':
+            return { icon: '💳', text: 'Cartão Débito', color: 'text-purple-600' };
+          case 'credito':
+            return { icon: '🏦', text: 'Cartão Crédito', color: 'text-orange-600' };
+          default:
+            return { icon: '❓', text: 'Não informado', color: 'text-gray-600' };
+        }
+      };
+
+      // Calcular formas de pagamento
+      const formasPagamentoCount: { [key: string]: number } = {};
       comandas?.forEach(comanda => {
-        comanda.comanda_itens?.forEach(item => {
-          if (item.produto_id) {
-            produtoQuantidades[item.produto_id] = (produtoQuantidades[item.produto_id] || 0) + item.quantidade;
-          }
-        });
+        const forma = comanda.forma_pagamento || 'não informado';
+        formasPagamentoCount[forma] = (formasPagamentoCount[forma] || 0) + 1;
       });
 
-      const produtosMaisVendidos = Object.entries(produtoQuantidades)
-        .map(([produtoId, quantidade]) => ({
-          produto: produtos?.find(p => p.id === parseInt(produtoId)),
-          quantidade
-        }))
-        .filter(item => item.produto)
-        .sort((a, b) => b.quantidade - a.quantidade)
-        .slice(0, 5) as { produto: Product; quantidade: number }[];
+      const formasPagamento = Object.entries(formasPagamentoCount)
+        .map(([forma, quantidade]) => {
+          const displayData = getPaymentMethodDisplay(forma === 'não informado' ? null : forma);
+          return {
+            forma: displayData.text,
+            quantidade,
+            icon: displayData.icon,
+            color: displayData.color
+          };
+        })
+        .sort((a, b) => b.quantidade - a.quantidade);
 
-      console.log('🏆 Produtos mais vendidos:', produtosMaisVendidos);
+      console.log('💳 Formas de pagamento:', formasPagamento);
       console.log('✅ ===== RELATÓRIO CONCLUÍDO =====');
 
       setReportData({
@@ -144,7 +160,7 @@ export const useReportData = (selectedDate: string) => {
         totalVendas,
         totalItens,
         ticketMedio,
-        produtosMaisVendidos
+        formasPagamento
       });
     } catch (error) {
       console.error('❌ Erro ao buscar dados do relatório:', error);

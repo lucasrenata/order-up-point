@@ -8,7 +8,7 @@ interface ReportData {
   totalVendas: number;
   totalItens: number;
   ticketMedio: number;
-  produtosMaisVendidos: { produto: any; quantidade: number }[];
+  formasPagamento: { forma: string; quantidade: number; icon: string; color: string }[];
 }
 
 export const generatePDFReport = async (data: ReportData, selectedDate: string) => {
@@ -53,15 +53,15 @@ export const generatePDFReport = async (data: ReportData, selectedDate: string) 
   pdf.text(`Ticket Médio: ${data.ticketMedio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 20, yPos);
   yPos += 15;
   
-  // Produtos mais vendidos
-  if (data.produtosMaisVendidos.length > 0) {
+  // Formas de pagamento
+  if (data.formasPagamento.length > 0) {
     pdf.setFontSize(14);
-    pdf.text('🏆 Produtos Mais Vendidos', 20, yPos);
+    pdf.text('💳 Formas de Pagamento', 20, yPos);
     yPos += 10;
     
     pdf.setFontSize(10);
-    data.produtosMaisVendidos.slice(0, 5).forEach((item, index) => {
-      pdf.text(`${index + 1}. ${item.produto.nome} - ${item.quantidade} vendidos`, 25, yPos);
+    data.formasPagamento.forEach((item, index) => {
+      pdf.text(`${index + 1}. ${item.forma} - ${item.quantidade} comandas`, 25, yPos);
       yPos += 6;
     });
     yPos += 10;
