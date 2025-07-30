@@ -1,17 +1,6 @@
 import React from 'react';
 import { DollarSign, Package, TrendingUp, Award } from 'lucide-react';
-
-// Função local para formatar a data em UTC-3 (São Paulo)
-function formatDateInSaoPaulo(isoDateString) {
-  if (!isoDateString) return '';
-  const date = new Date(isoDateString);
-  return date.toLocaleDateString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-}
+import { formatBrazilianDate } from '../utils/dateUtils';
 
 interface ReportSummaryProps {
   data: {
@@ -25,6 +14,10 @@ interface ReportSummaryProps {
 }
 
 export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate }) => {
+  const displayDate = data.comandas.length > 0 
+    ? formatBrazilianDate(data.comandas[0].data_pagamento)
+    : formatBrazilianDate(selectedDate + 'T00:00:00Z');
+
   return (
     <div className="mb-8">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -85,7 +78,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <DollarSign className="text-green-500" size={20} />
-            Formas de Pagamento - {formatDateInSaoPaulo(selectedDate)}
+            Formas de Pagamento - {displayDate}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {data.formasPagamento.map((item, index) => (
