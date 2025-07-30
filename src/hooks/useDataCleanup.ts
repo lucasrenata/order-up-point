@@ -143,7 +143,7 @@ export const useDataCleanup = () => {
           totalValue: comandas.reduce((sum, comanda) => sum + (comanda.total || 0), 0),
           comandas
         }))
-        .sort((a, b) => b.date.localeCompare(a.date));
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       console.log('📋 Resumo final das datas:');
       summaries.forEach(summary => {

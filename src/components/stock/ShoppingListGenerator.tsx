@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { LowStockProduct } from '@/types/types';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
-import { formatBrazilianDateTime, getCurrentBrazilianDateTime, getCurrentBrazilianDate } from '@/utils/dateUtils';
 
 interface ShoppingListGeneratorProps {
   lowStockProducts: LowStockProduct[];
@@ -31,7 +30,7 @@ export function ShoppingListGenerator({ lowStockProducts }: ShoppingListGenerato
       yPosition += 10;
       doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Gerado em: ${formatBrazilianDateTime(getCurrentBrazilianDateTime())}`, margin, yPosition);
+      doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, margin, yPosition);
       
       yPosition += 20;
 
@@ -76,7 +75,7 @@ export function ShoppingListGenerator({ lowStockProducts }: ShoppingListGenerato
       );
 
       // Salvar arquivo
-      const fileName = `lista-compras-${getCurrentBrazilianDate()}.pdf`;
+      const fileName = `lista-compras-${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(fileName);
       
       toast.success('Lista de compras gerada com sucesso!');

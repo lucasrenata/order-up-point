@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Clock, User, Receipt } from 'lucide-react';
-import { formatBrazilianDateTimeDirect } from '../utils/dateUtils';
+import { formatBrazilianDateTime } from '../utils/dateUtils';
 
 interface ReportTableProps {
   data: {
@@ -100,13 +100,10 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
                 </td>
                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                   <div className="sm:hidden">
-                    {formatBrazilianDateTimeDirect(comanda.data_pagamento || comanda.created_at).split(' ')[0]}
+                    {formatBrazilianDateTime(comanda.data_pagamento).split(' ')[0]}
                   </div>
                   <div className="hidden sm:block">
-                    {formatBrazilianDateTimeDirect(comanda.data_pagamento || comanda.created_at)}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Criada: {formatBrazilianDateTimeDirect(comanda.created_at).split(' ')[1]}
+                    {formatBrazilianDateTime(comanda.data_pagamento)}
                   </div>
                 </td>
                 <td className="px-3 sm:px-6 py-4">

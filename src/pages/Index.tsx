@@ -187,15 +187,11 @@ export default function Index() {
       
       if (!comanda) {
         console.log('Comanda não encontrada, criando nova...');
-        const createdAt = getCurrentBrazilianDateTime();
-        console.log(`🕐 Criando comanda ${comandaId} em:`, createdAt);
-        
         const { data: newComanda, error: createError } = await supabase
           .from('comandas')
           .insert({ 
             identificador_cliente: comandaId, 
-            status: 'aberta',
-            created_at: createdAt
+            status: 'aberta' 
           })
           .select(`
             *,
@@ -256,7 +252,6 @@ export default function Index() {
       
       // Usar data/hora brasileira atual para o pagamento
       const brazilianPaymentDateTime = getCurrentBrazilianDateTime();
-      console.log(`💰 Processando pagamento da comanda ${activeComanda.identificador_cliente} em:`, brazilianPaymentDateTime);
       
       // Confirmar o pagamento apenas se a baixa no estoque foi bem-sucedida
       const { error } = await supabase
