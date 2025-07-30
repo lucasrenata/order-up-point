@@ -20,7 +20,7 @@ import {
 } from './ui/alert-dialog';
 import { Button } from './ui/button';
 import { useDataCleanup } from '../hooks/useDataCleanup';
-import { formatBrazilianDate, getCurrentBrazilianDate } from '../utils/dateUtils';
+import { formatBrazilianDateDirect, getCurrentBrazilianDate } from '../utils/dateUtils';
 
 export const DataCleanupModal: React.FC = () => {
   const { 
@@ -119,7 +119,7 @@ export const DataCleanupModal: React.FC = () => {
                 </div>
                 <div>
                   <p className="font-semibold text-gray-800 flex items-center gap-2">
-                    {formatBrazilianDate(summary.date)}
+                    {formatBrazilianDateDirect(summary.date)}
                     {isToday && (
                       <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded">
                         HOJE
@@ -336,7 +336,7 @@ export const DataCleanupModal: React.FC = () => {
             </AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja deletar todas as comandas pagas do dia{' '}
-              <strong>{selectedDate ? formatBrazilianDate(selectedDate) : ''}</strong>?
+              <strong>{selectedDate ? formatBrazilianDateDirect(selectedDate) : ''}</strong>?
               {selectedDate === getCurrentBrazilianDate() && (
                 <div className="mt-2 p-2 bg-yellow-100 border border-yellow-300 rounded text-yellow-800">
                   <strong>⚠️ ATENÇÃO:</strong> Esta é a data de hoje! Comandas podem estar sendo processadas.

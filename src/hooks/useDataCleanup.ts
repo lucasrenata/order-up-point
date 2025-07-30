@@ -3,9 +3,9 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { 
   convertUTCToBrazilianDate, 
-  getBrazilianDateRange, 
+  getBrazilianDateRangeSimple, 
   getCurrentBrazilianDate,
-  formatBrazilianDate 
+  formatBrazilianDateDirect 
 } from '../utils/dateUtils';
 
 interface DateSummary {
@@ -54,7 +54,7 @@ export const useDataCleanup = () => {
       if (comandas && comandas.length > 0) {
         console.log('🔍 Detalhes das comandas pagas:');
         comandas.slice(0, 3).forEach((comanda, index) => {
-          console.log(`  ${index + 1}. ${comanda.identificador_cliente} - ${comanda.total?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} - ${formatBrazilianDate(comanda.data_pagamento)}`);
+          console.log(`  ${index + 1}. ${comanda.identificador_cliente} - ${comanda.total?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} - ${formatBrazilianDateDirect(comanda.data_pagamento)}`);
         });
         if (comandas.length > 3) {
           console.log(`  ... e mais ${comandas.length - 3} comandas`);
@@ -119,7 +119,7 @@ export const useDataCleanup = () => {
           console.log(`📅 Comanda ${comanda.identificador_cliente}:`, {
             utc: comanda.data_pagamento,
             brazilian: brazilianDate,
-            brazilian_formatted: formatBrazilianDate(comanda.data_pagamento),
+            brazilian_formatted: formatBrazilianDateDirect(comanda.data_pagamento),
             isToday: brazilianDate === currentBrazilianDate
           });
         }
@@ -236,10 +236,10 @@ export const useDataCleanup = () => {
     try {
       console.log('🗑️ ===== INICIANDO DELEÇÃO POR DATA =====');
       console.log('📅 Data brasileira selecionada:', date);
-      console.log('📅 Data formatada:', formatBrazilianDate(date + 'T00:00:00Z'));
+      console.log('📅 Data formatada:', formatBrazilianDateDirect(date + 'T00:00:00Z'));
       
-      const { start, end } = getBrazilianDateRange(date);
-      console.log('🌍 Range UTC calculado:', { start, end });
+      const { start, end } = getBrazilianDateRangeSimple(date);
+      console.log('🌍 Range UTC direto:', { start, end });
       
       const { data: comandas, error: selectError } = await supabase
         .from('comandas')
