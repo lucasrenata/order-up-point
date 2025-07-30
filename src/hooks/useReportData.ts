@@ -76,8 +76,9 @@ export const useReportData = (selectedDate: string) => {
         console.log(`📋 Comanda ${index + 1}:`, {
           id: comanda.identificador_cliente,
           total: comanda.total?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+          created_at_utc: comanda.created_at,
           data_pagamento_utc: comanda.data_pagamento,
-          data_pagamento_br: brazilianTime,
+          data_referencia_br: brazilianTime,
           itens: comanda.comanda_itens?.length || 0
         });
       });
