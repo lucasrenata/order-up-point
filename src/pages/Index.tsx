@@ -191,7 +191,8 @@ export default function Index() {
           .from('comandas')
           .insert({ 
             identificador_cliente: comandaId, 
-            status: 'aberta' 
+            status: 'aberta',
+            created_at: getCurrentBrazilianDateTime()
           })
           .select(`
             *,
