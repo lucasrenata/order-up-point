@@ -344,7 +344,7 @@ export default function Index() {
                 onChange={(e) => setComandaCodeInput(e.target.value)} 
                 onKeyDown={handleActivateComanda} 
                 placeholder="Ler código da COMANDA ou 300 avulso" 
-                className="w-full md:w-110 bg-white border border-gray-300 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                className="w-full md:w-105 bg-white border border-gray-300 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                 aria-label="Campo para inserir código da comanda"
               />
             </div>
