@@ -333,7 +333,7 @@ export default function Index() {
         <header className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-gray-700 mb-2 flex items-center gap-2">
-              🍽️ PDV - Restaurante por Quilo
+              🍽️ Parceria Com IA - PDV
             </h1>
             <div className="relative">
               <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -343,7 +343,7 @@ export default function Index() {
                 value={comandaCodeInput} 
                 onChange={(e) => setComandaCodeInput(e.target.value)} 
                 onKeyDown={handleActivateComanda} 
-                placeholder="Ler código da COMANDA e pressionar Enter" 
+                placeholder="Ler código da COMANDA ou usar C300 para avulso" 
                 className="w-full md:w-96 bg-white border border-gray-300 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                 aria-label="Campo para inserir código da comanda"
               />
