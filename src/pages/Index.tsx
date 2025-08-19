@@ -336,7 +336,7 @@ export default function Index() {
               🍽️ Parceria Com IA - PDV
             </h1>
             <div className="relative">
-              <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={25} />
+              <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={30} />
               <input 
                 id="comanda-input"
                 type="text" 
