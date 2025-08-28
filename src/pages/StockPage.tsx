@@ -123,14 +123,14 @@ export default function StockPage() {
     try {
       const { error } = await supabase
         .from('produtos')
-        .update({ ativo: false })
+        .delete()
         .eq('id', productId);
 
       if (error) throw error;
-      toast.success('Produto desativado com sucesso!');
+      toast.success('Produto deletado com sucesso!');
       fetchProducts();
     } catch (error) {
-      toast.error('Erro ao desativar produto');
+      toast.error('Erro ao deletar produto');
       console.error(error);
     }
   };
