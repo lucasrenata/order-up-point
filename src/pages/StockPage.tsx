@@ -14,6 +14,8 @@ import { supabase } from '@/lib/supabase';
 import { Product, LowStockProduct } from '@/types/types';
 import { toast } from 'sonner';
 
+const MOVES_TABLE = 'estoque_movimentacoes';
+
 export default function StockPage() {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
@@ -86,15 +88,50 @@ export default function StockPage() {
     setFilteredProducts(filtered);
   }, [products, searchTerm, selectedCategory]);
 
+  const deleteMovementsByProduct = async (productId: number) => {
+    try {
+      const { error } = await supabase
+        .from(MOVES_TABLE)
+        .delete()
+        .eq('produto_id', productId);
+
+      if (error) {
+        console.error('Erro ao limpar movimentações:', error);
+        toast.warning('Não foi possível limpar as movimentações. Verifique as permissões da tabela.');
+        return false;
+      }
+
+      console.log(`Movimentações limpas para produto ID: ${productId}`);
+      toast.success('Movimentações limpas para este produto');
+      return true;
+    } catch (error) {
+      console.error('Erro ao limpar movimentações:', error);
+      toast.warning('Erro ao limpar movimentações do produto');
+      return false;
+    }
+  };
+
   const handleSaveProduct = async (productData: Partial<Product>) => {
     try {
       if (editingProduct) {
+        const previousStock = editingProduct.estoque_atual ?? 0;
+        const newStock = typeof productData.estoque_atual === 'number' ? productData.estoque_atual : previousStock;
+        
+        console.log(`Atualização de estoque - Anterior: ${previousStock}, Novo: ${newStock}`);
+
         const { error } = await supabase
           .from('produtos')
           .update(productData)
           .eq('id', editingProduct.id);
 
         if (error) throw error;
+        
+        // Se houve reposição de estoque (aumento), limpar movimentações
+        if (newStock > previousStock) {
+          console.log('Reposição detectada, limpando movimentações...');
+          await deleteMovementsByProduct(editingProduct.id);
+        }
+        
         toast.success('Produto atualizado com sucesso!');
       } else {
         const { error } = await supabase
@@ -121,6 +158,9 @@ export default function StockPage() {
 
   const handleDeleteProduct = async (productId: number) => {
     try {
+      // Primeiro limpar as movimentações relacionadas ao produto
+      await deleteMovementsByProduct(productId);
+      
       const { error } = await supabase
         .from('produtos')
         .delete()
