@@ -186,70 +186,7 @@ export default function Index() {
         return;
       }
       
-      // Se não encontrou comanda aberta, busca por comanda paga para reabrir
-      if (!comanda) {
-        console.log('Comanda aberta não encontrada, buscando comanda paga...');
-        const { data: comandaPaga, error: errorPaga } = await supabase
-          .from('comandas')
-          .select(`
-            *,
-            comanda_itens (
-              id,
-              created_at,
-              comanda_id,
-              produto_id,
-              quantidade,
-              preco_unitario,
-              descricao
-            )
-          `)
-          .eq('identificador_cliente', comandaId)
-          .eq('status', 'paga')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        
-        if (errorPaga) {
-          console.error('Erro ao buscar comanda paga:', errorPaga);
-          showNotification('Erro ao buscar comanda.', 'error');
-          setIsLoading(false);
-          return;
-        }
-        
-        if (comandaPaga) {
-          console.log('Reabrindo comanda paga:', comandaPaga.id);
-          
-          // Reabrir a comanda: alterar status para 'aberta' e limpar dados de pagamento
-          const { error: reopenError } = await supabase
-            .from('comandas')
-            .update({
-              status: 'aberta',
-              total: null,
-              data_pagamento: null,
-              forma_pagamento: null
-            })
-            .eq('id', comandaPaga.id);
-          
-          if (reopenError) {
-            console.error('Erro ao reabrir comanda:', reopenError);
-            showNotification('Erro ao reabrir comanda.', 'error');
-            setIsLoading(false);
-            return;
-          }
-          
-          comanda = {
-            ...comandaPaga,
-            status: 'aberta',
-            total: null,
-            data_pagamento: null,
-            forma_pagamento: null,
-            comanda_itens: comandaPaga.comanda_itens || []
-          };
-          showNotification(`Comanda #${comandaId} reaberta!`, 'success');
-        }
-      }
-      
-      // Se ainda não tem comanda, criar uma nova
+      // Se não encontrou comanda aberta, criar uma nova
       if (!comanda) {
         console.log('Comanda não encontrada, criando nova...');
         const { data: newComanda, error: createError } = await supabase
@@ -285,7 +222,7 @@ export default function Index() {
           comanda_itens: newComanda.comanda_itens || []
         };
         showNotification(`Nova comanda #${comandaId} criada!`, 'success');
-      } else if (comanda.status === 'aberta') {
+      } else {
         comanda = {
           ...comanda,
           comanda_itens: comanda.comanda_itens || []
