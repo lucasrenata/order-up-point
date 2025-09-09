@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { DollarSign, X, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
 import { Comanda } from '../types/types';
 
@@ -11,10 +11,40 @@ interface PaymentModalProps {
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, onClose, onConfirmPayment }) => {
   const [selectedPayment, setSelectedPayment] = useState<'dinheiro' | 'pix' | 'debito' | 'credito' | null>(null);
+  const [showCashModal, setShowCashModal] = useState(false);
+  const [cashReceived, setCashReceived] = useState('');
+  const [isSubmittingCash, setIsSubmittingCash] = useState(false);
+  const cashInputRef = useRef<HTMLInputElement>(null);
   
+  // Focus cash input when modal opens
+  useEffect(() => {
+    if (showCashModal && cashInputRef.current) {
+      cashInputRef.current.focus();
+    }
+  }, [showCashModal]);
+
   if (!comanda) return null;
   
   const total = comanda.comanda_itens.reduce((acc, item) => acc + parseFloat(item.preco_unitario.toString()) * item.quantidade, 0);
+
+  // Helper functions for currency handling
+  const parseCurrencyBR = (str: string): number => {
+    const cleanStr = str.replace(/[^\d,]/g, '').replace(',', '.');
+    return parseFloat(cleanStr) || 0;
+  };
+
+  const formatCurrencyBR = (num: number): string => {
+    return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
+  const getChange = (): number => {
+    const received = parseCurrencyBR(cashReceived);
+    return Math.max(received - total, 0);
+  };
+
+  const isCashAmountSufficient = (): boolean => {
+    return parseCurrencyBR(cashReceived) >= total;
+  };
 
   const paymentOptions = [
     { id: 'dinheiro', label: 'Dinheiro', icon: Banknote, color: 'bg-green-100 hover:bg-green-200 border-green-300' },
@@ -23,10 +53,32 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, onClose, on
     { id: 'credito', label: 'Cartão Crédito', icon: Wallet, color: 'bg-orange-100 hover:bg-orange-200 border-orange-300' }
   ];
 
+  const handlePaymentSelection = (paymentId: 'dinheiro' | 'pix' | 'debito' | 'credito') => {
+    setSelectedPayment(paymentId);
+    if (paymentId === 'dinheiro') {
+      setShowCashModal(true);
+      setCashReceived('');
+    }
+  };
+
   const handleConfirm = () => {
-    if (selectedPayment) {
+    if (selectedPayment && selectedPayment !== 'dinheiro') {
       onConfirmPayment(total, selectedPayment);
     }
+  };
+
+  const handleCashConfirm = () => {
+    if (isCashAmountSufficient() && !isSubmittingCash) {
+      setIsSubmittingCash(true);
+      setShowCashModal(false);
+      onConfirmPayment(total, 'dinheiro');
+    }
+  };
+
+  const handleCashCancel = () => {
+    setShowCashModal(false);
+    setSelectedPayment(null);
+    setCashReceived('');
   };
 
   return (
@@ -50,7 +102,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, onClose, on
               return (
                 <button
                   key={option.id}
-                  onClick={() => setSelectedPayment(option.id as any)}
+                  onClick={() => handlePaymentSelection(option.id as any)}
                   className={`
                     p-4 rounded-lg border-2 transition-all duration-200 flex flex-col items-center gap-2
                     ${isSelected 
@@ -77,20 +129,22 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, onClose, on
         </div>
 
         <div className="space-y-3">
-          <button 
-            onClick={handleConfirm}
-            disabled={!selectedPayment}
-            className={`
-              w-full font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-lg shadow-lg
-              ${selectedPayment 
-                ? 'bg-green-500 text-white hover:bg-green-600' 
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }
-            `}
-          >
-            <DollarSign size={22} />
-            Confirmar Pagamento
-          </button>
+          {selectedPayment !== 'dinheiro' && (
+            <button 
+              onClick={handleConfirm}
+              disabled={!selectedPayment}
+              className={`
+                w-full font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-lg shadow-lg
+                ${selectedPayment 
+                  ? 'bg-green-500 text-white hover:bg-green-600' 
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }
+              `}
+            >
+              <DollarSign size={22} />
+              Confirmar Pagamento
+            </button>
+          )}
           <button 
             onClick={onClose} 
             className="w-full bg-gray-200 text-gray-800 font-bold py-4 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 text-lg"
@@ -100,6 +154,81 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, onClose, on
           </button>
         </div>
       </div>
+
+      {/* Cash Payment Modal */}
+      {showCashModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Banknote className="text-green-600" size={32} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Pagamento em Dinheiro</h2>
+              <p className="text-gray-500">Comanda #{comanda.identificador_cliente}</p>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex justify-between text-lg font-semibold mb-2">
+                  <span className="text-gray-900">Total a pagar:</span>
+                  <span className="text-green-600">{formatCurrencyBR(total)}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Valor recebido
+                </label>
+                <input
+                  ref={cashInputRef}
+                  type="text"
+                  value={cashReceived}
+                  onChange={(e) => setCashReceived(e.target.value)}
+                  placeholder="0,00"
+                  className="w-full p-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+                {cashReceived && !isCashAmountSufficient() && (
+                  <p className="text-red-500 text-sm mt-1">Valor insuficiente</p>
+                )}
+              </div>
+
+              {cashReceived && isCashAmountSufficient() && (
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex justify-between text-lg font-semibold">
+                    <span className="text-gray-900">Troco:</span>
+                    <span className="text-blue-600">{formatCurrencyBR(getChange())}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={handleCashConfirm}
+                disabled={!isCashAmountSufficient() || isSubmittingCash}
+                className={`
+                  w-full font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-lg shadow-lg
+                  ${isCashAmountSufficient() && !isSubmittingCash
+                    ? 'bg-green-500 text-white hover:bg-green-600' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }
+                `}
+              >
+                <DollarSign size={22} />
+                {isSubmittingCash ? 'Processando...' : 'Confirmar e Concluir'}
+              </button>
+              <button
+                onClick={handleCashCancel}
+                disabled={isSubmittingCash}
+                className="w-full bg-gray-200 text-gray-800 font-bold py-4 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 text-lg"
+              >
+                <X size={22} />
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
