@@ -10,6 +10,15 @@ interface InputPanelProps {
   activeComandaId?: number;
 }
 
+// Lista específica de bebidas para atalhos rápidos
+const BEBIDAS_ATALHOS_RAPIDOS = [
+  'Água sem gás',
+  'Coca cola lata 350ml',
+  'Guaraná lata 350ml', 
+  'Coca cola 200ml',
+  'Guaraná 200ml'
+];
+
 export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, onAddPratoPorPeso, activeComandaId }) => {
   const [categoriaAtiva, setCategoriaAtiva] = useState<'bebidas' | 'sobremesas'>('bebidas');
   const [valorPeso, setValorPeso] = useState('');
@@ -60,6 +69,22 @@ export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, 
     setIsLoading(true);
     await onAddProduto(produto);
     setIsLoading(false);
+  };
+
+  // Função para verificar se o produto deve aparecer nos atalhos rápidos
+  const getQuickShortcutProducts = () => {
+    if (categoriaAtiva === 'bebidas') {
+      // Para bebidas, filtrar apenas os 5 produtos específicos
+      return produtos.filter(produto => 
+        produto.categoria === 'bebidas' && 
+        BEBIDAS_ATALHOS_RAPIDOS.some(nomeEspecifico => 
+          produto.nome.toLowerCase().includes(nomeEspecifico.toLowerCase()) ||
+          nomeEspecifico.toLowerCase().includes(produto.nome.toLowerCase())
+        )
+      ).slice(0, 5); // Garantir máximo de 5 itens
+    }
+    // Para outras categorias, mostrar todos os produtos da categoria
+    return produtos.filter(p => p.categoria === categoriaAtiva);
   };
 
   return (
@@ -150,7 +175,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, 
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 overflow-y-auto">
-          {produtos.filter(p => p.categoria === categoriaAtiva).map(produto => (
+          {getQuickShortcutProducts().map(produto => (
             <div 
               key={produto.id} 
               onClick={() => handleAddQuickProduct(produto)} 
