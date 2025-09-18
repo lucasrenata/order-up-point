@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Weight, Barcode, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Weight, Barcode, Zap, Search } from 'lucide-react';
 import { Product } from '../types/types';
 
 interface InputPanelProps {
@@ -24,6 +24,27 @@ export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, 
   const [valorPeso, setValorPeso] = useState('');
   const [scannedBarcode, setScannedBarcode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Estados para busca de produtos
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+
+  // useEffect para busca em tempo real
+  useEffect(() => {
+    if (searchTerm.length >= 2) {
+      const filtered = produtos
+        .filter(produto => 
+          produto.nome.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        .slice(0, 8); // Limitar a 8 resultados
+      setFilteredProducts(filtered);
+      setShowSearchResults(true);
+    } else {
+      setFilteredProducts([]);
+      setShowSearchResults(false);
+    }
+  }, [searchTerm, produtos]);
 
   const handleAddPeso = async () => {
     if (!activeComandaId) { 
@@ -61,6 +82,29 @@ export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, 
     }
   };
   
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleSearchProduct = async (produto: Product) => {
+    if (!activeComandaId) { 
+      alert("Ative uma comanda primeiro."); 
+      return; 
+    }
+    setIsLoading(true);
+    await onAddProduto(produto);
+    setSearchTerm(''); // Limpar campo após adicionar
+    setShowSearchResults(false);
+    setIsLoading(false);
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setShowSearchResults(false);
+      setSearchTerm('');
+    }
+  };
+
   const handleAddQuickProduct = async (produto: Product) => {
     if (!activeComandaId) { 
       alert("Ative uma comanda primeiro."); 
@@ -147,6 +191,53 @@ export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, 
           disabled={!activeComandaId}
           aria-label="Campo para inserir código de barras do produto"
         />
+      </div>
+
+      {/* Buscar por Nome */}
+      <div className="relative border-2 border-gray-200 rounded-xl p-3 sm:p-4 hover:border-blue-300 transition-colors">
+        <h3 className="font-bold text-base sm:text-lg text-gray-800 mb-3 sm:mb-4 flex items-center gap-2">
+          <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-100 rounded-full flex items-center justify-center">
+            <Search className="text-green-600" size={14} />
+          </div>
+          <span className="text-sm sm:text-base">Buscar por Nome</span>
+        </h3>
+        <input 
+          type="text" 
+          value={searchTerm} 
+          onChange={handleSearchChange}
+          onKeyDown={handleSearchKeyDown}
+          placeholder="Digite o nome do produto..." 
+          className="w-full bg-gray-50 border border-gray-300 rounded-lg py-2 sm:py-3 px-3 sm:px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base" 
+          disabled={!activeComandaId}
+        />
+        
+        {/* Lista de resultados da busca */}
+        {showSearchResults && filteredProducts.length > 0 && (
+          <div className="absolute left-3 right-3 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
+            {filteredProducts.map(produto => (
+              <div
+                key={produto.id}
+                onClick={() => handleSearchProduct(produto)}
+                className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0"
+              >
+                <div className="text-2xl">{produto.img}</div>
+                <div className="flex-grow">
+                  <p className="font-semibold text-gray-800 text-sm">{produto.nome}</p>
+                  <p className="text-green-600 font-bold text-xs">
+                    {produto.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {/* Mensagem quando não há resultados */}
+        {showSearchResults && filteredProducts.length === 0 && searchTerm.length >= 2 && (
+          <div className="absolute left-3 right-3 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 p-3">
+            <p className="text-gray-500 text-sm text-center">Nenhum produto encontrado</p>
+          </div>
+        )}
       </div>
 
       {/* Atalhos Rápidos */}
