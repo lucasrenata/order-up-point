@@ -9,6 +9,24 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Product } from '@/types/types';
 
+// Mapeamento de categorias para emojis padrão
+const CATEGORY_EMOJIS: Record<string, string> = {
+  'bebidas': '🥤',
+  'doces': '🍬',
+  'terços': '📿',
+  'variados': '📦',
+  'salgados': '🍟',
+  'sorvetes': '🍦',
+  'lanches': '🍔',
+  'outros': '📦'
+};
+
+// Função helper para obter emoji da categoria
+const getCategoryEmoji = (category: string): string => {
+  const normalized = category.toLowerCase().trim();
+  return CATEGORY_EMOJIS[normalized] || '📦';
+};
+
 interface ProductFormProps {
   product?: Product | null;
   categories: string[];
@@ -33,6 +51,7 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
   });
 
   const [isScanning, setIsScanning] = useState(false);
+  const [emojiManuallyChanged, setEmojiManuallyChanged] = useState(false);
 
   useEffect(() => {
     if (product) {
@@ -141,7 +160,16 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
                 <Label htmlFor="categoria">Categoria *</Label>
                 <Select
                   value={formData.categoria}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, categoria: value }))}
+                  onValueChange={(value) => {
+                    setFormData(prev => {
+                      const newData = { ...prev, categoria: value };
+                      // Atualizar emoji automaticamente apenas se não foi alterado manualmente
+                      if (!emojiManuallyChanged || prev.img === '📦' || prev.img === getCategoryEmoji(prev.categoria)) {
+                        newData.img = getCategoryEmoji(value);
+                      }
+                      return newData;
+                    });
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione uma categoria" />
@@ -161,10 +189,16 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
                 <Input
                   id="img"
                   value={formData.img}
-                  onChange={(e) => setFormData(prev => ({ ...prev, img: e.target.value }))}
-                  placeholder="📦"
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, img: e.target.value }));
+                    setEmojiManuallyChanged(true);
+                  }}
+                  placeholder={formData.categoria ? getCategoryEmoji(formData.categoria) : "📦"}
                   maxLength={2}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Emoji atualizado automaticamente ao selecionar categoria
+                </p>
               </div>
 
               <div className="space-y-2">
