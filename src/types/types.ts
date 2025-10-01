@@ -14,6 +14,7 @@ export interface Product {
   fornecedor?: string;
   descricao?: string;
   ativo?: boolean;
+  atalho_rapido?: boolean;
 }
 
 export interface StockMovement {

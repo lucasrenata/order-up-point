@@ -63,7 +63,8 @@ export default function StockPage() {
         estoque_minimo: product.estoque_minimo ?? 5,
         estoque_maximo: product.estoque_maximo ?? 100,
         unidade_medida: product.unidade_medida ?? 'unidade',
-        ativo: product.ativo ?? true
+        ativo: product.ativo ?? true,
+        atalho_rapido: product.atalho_rapido ?? false
       }));
       setProducts(productsWithDefaults);
       updateLowStockProducts(productsWithDefaults);

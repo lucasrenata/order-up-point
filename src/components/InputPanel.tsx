@@ -10,14 +10,6 @@ interface InputPanelProps {
   activeComandaId?: number;
 }
 
-// Lista específica de bebidas para atalhos rápidos
-const BEBIDAS_ATALHOS_RAPIDOS = [
-  'Água sem gás',
-  'Coca cola lata 350ml',
-  'Guaraná lata 350ml', 
-  'Coca cola 200ml',
-  'Guaraná 200ml'
-];
 
 export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, onAddPratoPorPeso, activeComandaId }) => {
   const [categoriaAtiva, setCategoriaAtiva] = useState<'bebidas' | 'sobremesas'>('bebidas');
@@ -117,18 +109,13 @@ export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, 
 
   // Função para verificar se o produto deve aparecer nos atalhos rápidos
   const getQuickShortcutProducts = () => {
-    if (categoriaAtiva === 'bebidas') {
-      // Para bebidas, filtrar apenas os 5 produtos específicos
-      return produtos.filter(produto => 
-        produto.categoria === 'bebidas' && 
-        BEBIDAS_ATALHOS_RAPIDOS.some(nomeEspecifico => 
-          produto.nome.toLowerCase().includes(nomeEspecifico.toLowerCase()) ||
-          nomeEspecifico.toLowerCase().includes(produto.nome.toLowerCase())
-        )
-      ).slice(0, 5); // Garantir máximo de 5 itens
-    }
-    // Para outras categorias, mostrar todos os produtos da categoria
-    return produtos.filter(p => p.categoria === categoriaAtiva);
+    return produtos
+      .filter(produto => 
+        produto.categoria === categoriaAtiva && 
+        produto.atalho_rapido === true &&
+        produto.ativo !== false
+      )
+      .slice(0, 12); // Limitar a 12 itens por categoria
   };
 
   return (

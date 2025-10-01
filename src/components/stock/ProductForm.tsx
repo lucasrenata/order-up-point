@@ -47,7 +47,8 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
     unidade_medida: 'unidade',
     fornecedor: '',
     descricao: '',
-    ativo: true
+    ativo: true,
+    atalho_rapido: false
   });
 
   const [isScanning, setIsScanning] = useState(false);
@@ -67,7 +68,8 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
         unidade_medida: product.unidade_medida ?? 'unidade',
         fornecedor: product.fornecedor || '',
         descricao: product.descricao || '',
-        ativo: product.ativo ?? true
+        ativo: product.ativo ?? true,
+        atalho_rapido: product.atalho_rapido ?? false
       });
     }
   }, [product]);
@@ -303,6 +305,18 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, ativo: checked }))}
               />
               <Label htmlFor="ativo">Produto ativo</Label>
+            </div>
+
+            <div className="flex items-center space-x-2 pt-2">
+              <Switch
+                id="atalho_rapido"
+                checked={formData.atalho_rapido}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, atalho_rapido: checked }))}
+              />
+              <Label htmlFor="atalho_rapido" className="flex items-center gap-1">
+                <span>⭐</span>
+                Incluir em atalhos rápidos
+              </Label>
             </div>
 
             <div className="flex gap-2 pt-4">
