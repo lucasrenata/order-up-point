@@ -16,6 +16,23 @@ import { toast } from 'sonner';
 
 const MOVES_TABLE = 'estoque_movimentacoes';
 
+// Mapeamento de categorias para emojis
+const CATEGORY_EMOJIS: Record<string, string> = {
+  'bebidas': '🥤',
+  'doces': '🍬',
+  'terços': '📿',
+  'variados': '📦',
+  'salgados': '🍟',
+  'sorvetes': '🍦',
+  'lanches': '🍔',
+  'outros': '📦'
+};
+
+const getCategoryEmoji = (category: string): string => {
+  const normalized = category.toLowerCase().trim();
+  return CATEGORY_EMOJIS[normalized] || '📦';
+};
+
 export default function StockPage() {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
@@ -175,6 +192,57 @@ export default function StockPage() {
     }
   };
 
+  const handleUpdateAllEmojis = async () => {
+    try {
+      toast.info('Atualizando emojis de todos os produtos...');
+      
+      // Buscar todos os produtos
+      const { data: allProducts, error: fetchError } = await supabase
+        .from('produtos')
+        .select('*');
+
+      if (fetchError) throw fetchError;
+      
+      if (!allProducts || allProducts.length === 0) {
+        toast.info('Nenhum produto encontrado');
+        return;
+      }
+
+      console.log(`📋 Analisando ${allProducts.length} produtos...`);
+      
+      let updatedCount = 0;
+      
+      // Atualizar cada produto com o emoji correto
+      for (const product of allProducts) {
+        const correctEmoji = getCategoryEmoji(product.categoria);
+        
+        // Apenas atualizar se o emoji estiver incorreto
+        if (product.img !== correctEmoji) {
+          console.log(`🔄 Atualizando ${product.nome}: ${product.img} → ${correctEmoji}`);
+          
+          const { error: updateError } = await supabase
+            .from('produtos')
+            .update({ img: correctEmoji })
+            .eq('id', product.id);
+
+          if (updateError) {
+            console.error(`Erro ao atualizar ${product.nome}:`, updateError);
+          } else {
+            updatedCount++;
+          }
+        }
+      }
+
+      console.log(`✅ ${updatedCount} produtos atualizados de ${allProducts.length} total`);
+      
+      toast.success(`${updatedCount} produtos atualizados com sucesso!`);
+      fetchProducts();
+    } catch (error) {
+      toast.error('Erro ao atualizar emojis');
+      console.error(error);
+    }
+  };
+
   const getStockStatus = (product: Product) => {
     const current = product.estoque_atual ?? 0;
     const min = product.estoque_minimo ?? 0;
@@ -219,10 +287,19 @@ export default function StockPage() {
               <h1 className="text-3xl font-bold text-foreground">Gerenciamento de Estoque</h1>
             </div>
           </div>
-          <Button onClick={() => setIsProductFormOpen(true)} className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Novo Produto
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={handleUpdateAllEmojis} 
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              🔄 Corrigir Emojis
+            </Button>
+            <Button onClick={() => setIsProductFormOpen(true)} className="flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              Novo Produto
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
