@@ -18,6 +18,11 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   'salgados': '🍟',
   'sorvetes': '🍦',
   'lanches': '🍔',
+  'salgadinho': '🥨',
+  'chocolate': '🍫',
+  'bolachas': '🍪',
+  'higiene pessoal': '🧼',
+  'capsulas de café': '☕',
   'outros': '📦'
 };
 

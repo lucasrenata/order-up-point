@@ -25,6 +25,11 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   'salgados': '🍟',
   'sorvetes': '🍦',
   'lanches': '🍔',
+  'salgadinho': '🥨',
+  'chocolate': '🍫',
+  'bolachas': '🍪',
+  'higiene pessoal': '🧼',
+  'capsulas de café': '☕',
   'outros': '📦'
 };
 
@@ -44,7 +49,7 @@ export default function StockPage() {
   const [lowStockProducts, setLowStockProducts] = useState<LowStockProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const categories = ['bebidas', 'doces', 'terços', 'variados'];
+  const categories = ['bebidas', 'doces', 'terços', 'variados', 'salgadinho', 'chocolate', 'bolachas', 'higiene pessoal', 'sorvetes', 'capsulas de café'];
 
   const fetchProducts = async () => {
     setIsLoading(true);
