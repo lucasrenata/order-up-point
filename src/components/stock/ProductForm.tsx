@@ -7,30 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Product } from '@/types/types';
-
-// Mapeamento de categorias para emojis padrão
-const CATEGORY_EMOJIS: Record<string, string> = {
-  'bebidas': '🥤',
-  'doces': '🍬',
-  'terços': '📿',
-  'variados': '📦',
-  'salgados': '🍟',
-  'sorvetes': '🍦',
-  'lanches': '🍔',
-  'salgadinho': '🥨',
-  'chocolate': '🍫',
-  'bolachas': '🍪',
-  'higiene pessoal': '🧼',
-  'capsulas de café': '☕',
-  'outros': '📦'
-};
-
-// Função helper para obter emoji da categoria
-const getCategoryEmoji = (category: string): string => {
-  const normalized = category.toLowerCase().trim();
-  return CATEGORY_EMOJIS[normalized] || '📦';
-};
+import { Product, Categoria } from '@/types/types';
+import { supabase } from '@/lib/supabase';
 
 interface ProductFormProps {
   product?: Product | null;
@@ -58,6 +36,31 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
 
   const [isScanning, setIsScanning] = useState(false);
   const [emojiManuallyChanged, setEmojiManuallyChanged] = useState(false);
+  const [categoryEmojis, setCategoryEmojis] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    // Buscar emojis das categorias
+    const fetchCategoryEmojis = async () => {
+      const { data, error } = await supabase
+        .from('categorias')
+        .select('nome, emoji')
+        .eq('ativo', true);
+
+      if (!error && data) {
+        const emojiMap: Record<string, string> = {};
+        data.forEach(cat => {
+          emojiMap[cat.nome.toLowerCase()] = cat.emoji;
+        });
+        setCategoryEmojis(emojiMap);
+      }
+    };
+    fetchCategoryEmojis();
+  }, []);
+
+  const getCategoryEmoji = (category: string): string => {
+    const normalized = category.toLowerCase().trim();
+    return categoryEmojis[normalized] || '📦';
+  };
 
   useEffect(() => {
     if (product) {

@@ -31,6 +31,14 @@ export interface LowStockProduct {
   quantidade_faltante: number;
 }
 
+export interface Categoria {
+  id: number;
+  nome: string;
+  emoji: string;
+  ativo: boolean;
+  created_at: string;
+}
+
 export interface ComandaItem {
   id: number;
   created_at: string;

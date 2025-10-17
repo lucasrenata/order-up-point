@@ -11,32 +11,10 @@ import { StockTable } from '@/components/stock/StockTable';
 import { LowStockAlert } from '@/components/stock/LowStockAlert';
 import { ShoppingListGenerator } from '@/components/stock/ShoppingListGenerator';
 import { supabase } from '@/lib/supabase';
-import { Product, LowStockProduct } from '@/types/types';
+import { Product, LowStockProduct, Categoria } from '@/types/types';
 import { toast } from 'sonner';
 
 const MOVES_TABLE = 'estoque_movimentacoes';
-
-// Mapeamento de categorias para emojis
-const CATEGORY_EMOJIS: Record<string, string> = {
-  'bebidas': '🥤',
-  'doces': '🍬',
-  'terços': '📿',
-  'variados': '📦',
-  'salgados': '🍟',
-  'sorvetes': '🍦',
-  'lanches': '🍔',
-  'salgadinho': '🥨',
-  'chocolate': '🍫',
-  'bolachas': '🍪',
-  'higiene pessoal': '🧼',
-  'capsulas de café': '☕',
-  'outros': '📦'
-};
-
-const getCategoryEmoji = (category: string): string => {
-  const normalized = category.toLowerCase().trim();
-  return CATEGORY_EMOJIS[normalized] || '📦';
-};
 
 export default function StockPage() {
   const navigate = useNavigate();
@@ -48,8 +26,29 @@ export default function StockPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [lowStockProducts, setLowStockProducts] = useState<LowStockProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [categoryEmojis, setCategoryEmojis] = useState<Record<string, string>>({});
 
-  const categories = ['bebidas', 'doces', 'terços', 'variados', 'salgadinho', 'chocolate', 'bolachas', 'higiene pessoal', 'sorvetes', 'capsulas de café'];
+  const fetchCategorias = async () => {
+    const { data, error } = await supabase
+      .from('categorias')
+      .select('*')
+      .eq('ativo', true)
+      .order('nome');
+
+    if (error) {
+      toast.error('Erro ao carregar categorias');
+      console.error(error);
+    } else if (data) {
+      setCategorias(data);
+      // Criar mapeamento de emojis
+      const emojiMap: Record<string, string> = {};
+      data.forEach(cat => {
+        emojiMap[cat.nome.toLowerCase()] = cat.emoji;
+      });
+      setCategoryEmojis(emojiMap);
+    }
+  };
 
   const fetchProducts = async () => {
     setIsLoading(true);
@@ -76,6 +75,11 @@ export default function StockPage() {
     }
     setIsLoading(false);
   };
+  
+  const getCategoryEmoji = (category: string): string => {
+    const normalized = category.toLowerCase().trim();
+    return categoryEmojis[normalized] || '📦';
+  };
 
   const updateLowStockProducts = (productList: Product[]) => {
     const lowStock = productList
@@ -91,6 +95,7 @@ export default function StockPage() {
   };
 
   useEffect(() => {
+    fetchCategorias();
     fetchProducts();
   }, []);
 
@@ -373,9 +378,9 @@ export default function StockPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as categorias</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category.charAt(0).toUpperCase() + category.slice(1)}
+                  {categorias.map((categoria) => (
+                    <SelectItem key={categoria.id} value={categoria.nome}>
+                      {categoria.emoji} {categoria.nome.charAt(0).toUpperCase() + categoria.nome.slice(1)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -397,7 +402,7 @@ export default function StockPage() {
         {isProductFormOpen && (
           <ProductForm
             product={editingProduct}
-            categories={categories}
+            categories={categorias.map(c => c.nome)}
             onSave={handleSaveProduct}
             onCancel={() => {
               console.log('ProductForm onCancel called'); // Debug log
