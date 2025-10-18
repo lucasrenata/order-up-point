@@ -79,7 +79,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate
             <div>
               <p className="text-sm text-gray-600">Prato por Quilo</p>
               <p className="text-2xl font-bold text-pink-600">{data.pratoPorQuilo}</p>
-              <p className="text-xs text-gray-500 mt-1">comandas vendidas</p>
+              <p className="text-xs text-gray-500 mt-1">refeições vendidas</p>
             </div>
             <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
               <UtensilsCrossed className="text-pink-600" size={24} />

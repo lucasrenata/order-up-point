@@ -103,10 +103,11 @@ export const useReportData = (selectedDate: string) => {
       
       const ticketMedio = comandas?.length ? totalVendas / comandas.length : 0;
 
-      // Contar quantas comandas venderam "Prato por Quilo" (produto_id null)
-      const pratoPorQuilo = comandas?.filter(comanda => 
-        comanda.comanda_itens?.some(item => item.produto_id === null)
-      ).length || 0;
+      // Contar quantos ITENS (refeições) de "Prato por Quilo" foram vendidos
+      const pratoPorQuilo = comandas?.reduce((total, comanda) => {
+        const pratosQuilo = comanda.comanda_itens?.filter(item => item.produto_id === null) || [];
+        return total + pratosQuilo.length;
+      }, 0) || 0;
 
       console.log('📈 ===== ESTATÍSTICAS FINAIS =====');
       console.log('📅 Data:', formatBrazilianDateDirect(date + 'T00:00:00Z'));
