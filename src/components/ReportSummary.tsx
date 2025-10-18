@@ -1,5 +1,5 @@
 import React from 'react';
-import { DollarSign, Package, TrendingUp, Award } from 'lucide-react';
+import { DollarSign, Package, TrendingUp, Award, UtensilsCrossed } from 'lucide-react';
 import { formatBrazilianDateDirect } from '../utils/dateUtils';
 
 interface ReportSummaryProps {
@@ -9,6 +9,7 @@ interface ReportSummaryProps {
     ticketMedio: number;
     comandas: any[];
     formasPagamento: { forma: string; quantidade: number; icon: string; color: string }[];
+    pratoPorQuilo: number;
   };
   selectedDate: string;
 }
@@ -20,7 +21,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate
 
   return (
     <div className="mb-8">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -69,6 +70,19 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate
             </div>
             <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
               <Award className="text-orange-600" size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Prato por Quilo</p>
+              <p className="text-2xl font-bold text-pink-600">{data.pratoPorQuilo}</p>
+              <p className="text-xs text-gray-500 mt-1">comandas vendidas</p>
+            </div>
+            <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
+              <UtensilsCrossed className="text-pink-600" size={24} />
             </div>
           </div>
         </div>

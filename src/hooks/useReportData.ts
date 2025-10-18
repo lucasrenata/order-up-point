@@ -12,6 +12,7 @@ interface ReportData {
   totalItens: number;
   ticketMedio: number;
   formasPagamento: { forma: string; quantidade: number; icon: string; color: string }[];
+  pratoPorQuilo: number;
 }
 
 export const useReportData = (selectedDate: string) => {
@@ -102,6 +103,11 @@ export const useReportData = (selectedDate: string) => {
       
       const ticketMedio = comandas?.length ? totalVendas / comandas.length : 0;
 
+      // Contar quantas comandas venderam "Prato por Quilo" (produto_id null)
+      const pratoPorQuilo = comandas?.filter(comanda => 
+        comanda.comanda_itens?.some(item => item.produto_id === null)
+      ).length || 0;
+
       console.log('📈 ===== ESTATÍSTICAS FINAIS =====');
       console.log('📅 Data:', formatBrazilianDateDirect(date + 'T00:00:00Z'));
       console.log('💰 Total vendas:', totalVendas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
@@ -153,7 +159,8 @@ export const useReportData = (selectedDate: string) => {
         totalVendas,
         totalItens,
         ticketMedio,
-        formasPagamento
+        formasPagamento,
+        pratoPorQuilo
       });
     } catch (error) {
       console.error('❌ Erro ao buscar dados do relatório:', error);
