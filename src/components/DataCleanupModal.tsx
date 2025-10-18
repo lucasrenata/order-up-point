@@ -402,7 +402,7 @@ export const DataCleanupModal: React.FC = () => {
             Limpar Dados Antigos
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Trash2 className="text-red-600" size={20} />
@@ -410,7 +410,7 @@ export const DataCleanupModal: React.FC = () => {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto flex-1 pr-2">
             {/* Tabs para alternar entre modos */}
             <div className="flex border-b">
               <button
