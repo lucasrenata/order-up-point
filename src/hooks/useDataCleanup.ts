@@ -21,11 +21,12 @@ interface AllPaidSummary {
   comandas: any[];
 }
 
-type CleanupMode = 'by-date' | 'all-paid';
+type CleanupMode = 'by-date' | 'all-paid' | 'delete-all';
 
 export const useDataCleanup = () => {
   const [dateSummaries, setDateSummaries] = useState<DateSummary[]>([]);
   const [allPaidSummary, setAllPaidSummary] = useState<AllPaidSummary>({ count: 0, totalValue: 0, comandas: [] });
+  const [allComandasSummary, setAllComandasSummary] = useState<AllPaidSummary>({ count: 0, totalValue: 0, comandas: [] });
   const [cleanupMode, setCleanupMode] = useState<CleanupMode>('by-date');
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -78,6 +79,50 @@ export const useDataCleanup = () => {
       console.error('❌ Erro ao buscar comandas pagas:', error);
       toast.error('Erro ao carregar comandas pagas');
       setAllPaidSummary({ count: 0, totalValue: 0, comandas: [] });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchAllComandas = async () => {
+    setIsLoading(true);
+    
+    try {
+      console.log('🔍 ===== BUSCANDO TODAS AS COMANDAS (TODOS OS STATUS) =====');
+      
+      const { data: comandas, error } = await supabase
+        .from('comandas')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erro ao buscar todas as comandas:', error);
+        throw error;
+      }
+
+      console.log('📊 Total de comandas encontradas:', comandas?.length || 0);
+      
+      const totalValue = comandas?.reduce((sum, comanda) => sum + (comanda.total || 0), 0) || 0;
+      
+      const statusCount = comandas?.reduce((acc, comanda) => {
+        acc[comanda.status] = (acc[comanda.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>) || {};
+
+      console.log('📋 Comandas por status:', statusCount);
+      console.log('💰 Valor total:', totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+
+      const summary: AllPaidSummary = {
+        count: comandas?.length || 0,
+        totalValue,
+        comandas: comandas || []
+      };
+
+      setAllComandasSummary(summary);
+    } catch (error) {
+      console.error('❌ Erro ao buscar todas as comandas:', error);
+      toast.error('Erro ao carregar comandas');
+      setAllComandasSummary({ count: 0, totalValue: 0, comandas: [] });
     } finally {
       setIsLoading(false);
     }
@@ -230,6 +275,74 @@ export const useDataCleanup = () => {
     }
   };
 
+  const deleteAllComandas = async () => {
+    setIsDeleting(true);
+    
+    try {
+      console.log('🗑️ ===== INICIANDO DELEÇÃO DE TODAS AS COMANDAS =====');
+      
+      const { data: comandas, error: selectError } = await supabase
+        .from('comandas')
+        .select('id, identificador_cliente, status, total');
+
+      if (selectError) {
+        console.error('❌ Erro ao buscar comandas para deletar:', selectError);
+        throw selectError;
+      }
+
+      console.log('📋 Comandas encontradas para deleção:', comandas?.length || 0);
+
+      if (!comandas || comandas.length === 0) {
+        console.log('ℹ️ Nenhuma comanda encontrada');
+        toast.info('Nenhuma comanda encontrada');
+        return;
+      }
+
+      const comandaIds = comandas.map(comanda => comanda.id);
+      const totalValue = comandas.reduce((sum, comanda) => sum + (comanda.total || 0), 0);
+
+      console.log(`💰 Valor total a ser deletado: ${totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
+
+      // Deletar itens das comandas primeiro
+      console.log('🗑️ Deletando itens das comandas...');
+      const { error: deleteItensError } = await supabase
+        .from('comanda_itens')
+        .delete()
+        .in('comanda_id', comandaIds);
+
+      if (deleteItensError) {
+        console.error('❌ Erro ao deletar itens das comandas:', deleteItensError);
+        throw deleteItensError;
+      }
+
+      // Deletar comandas
+      console.log('🗑️ Deletando comandas...');
+      const { error: deleteComandasError } = await supabase
+        .from('comandas')
+        .delete()
+        .in('id', comandaIds);
+
+      if (deleteComandasError) {
+        console.error('❌ Erro ao deletar comandas:', deleteComandasError);
+        throw deleteComandasError;
+      }
+
+      console.log('✅ ===== DELEÇÃO DE TODAS AS COMANDAS CONCLUÍDA =====');
+      console.log(`🗑️ ${comandaIds.length} comandas deletadas com sucesso`);
+      toast.success(`${comandaIds.length} comandas deletadas com sucesso`);
+      
+      // Atualizar listas
+      await fetchAllComandas();
+      await fetchAllPaidComandas();
+      await fetchDateSummaries();
+    } catch (error) {
+      console.error('❌ Erro ao deletar todas as comandas:', error);
+      toast.error('Erro ao deletar comandas');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const deleteComandasByDate = async (date: string) => {
     setIsDeleting(true);
     
@@ -332,8 +445,10 @@ export const useDataCleanup = () => {
     console.log('🔄 useEffect executado, cleanupMode:', cleanupMode);
     if (cleanupMode === 'by-date') {
       fetchDateSummaries();
-    } else {
+    } else if (cleanupMode === 'all-paid') {
       fetchAllPaidComandas();
+    } else {
+      fetchAllComandas();
     }
   }, [cleanupMode]);
 
@@ -355,13 +470,16 @@ export const useDataCleanup = () => {
   return {
     dateSummaries,
     allPaidSummary,
+    allComandasSummary,
     cleanupMode,
     isLoading,
     isDeleting,
     setCleanupMode,
     fetchDateSummaries,
     fetchAllPaidComandas,
+    fetchAllComandas,
     deleteComandasByDate,
-    deleteAllPaidComandas
+    deleteAllPaidComandas,
+    deleteAllComandas
   };
 };
