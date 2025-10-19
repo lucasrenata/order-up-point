@@ -5,27 +5,40 @@ import { Comanda } from '../types/types';
 
 interface PaymentModalProps {
   comanda: Comanda | null;
+  multiComandas?: Comanda[];
+  isMultiMode?: boolean;
   onClose: () => void;
   onConfirmPayment: (total: number, formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito') => void;
 }
 
-export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, onClose, onConfirmPayment }) => {
+export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComandas = [], isMultiMode = false, onClose, onConfirmPayment }) => {
   const [selectedPayment, setSelectedPayment] = useState<'dinheiro' | 'pix' | 'debito' | 'credito' | null>(null);
   const [showCashModal, setShowCashModal] = useState(false);
   const [cashReceived, setCashReceived] = useState('');
   const [isSubmittingCash, setIsSubmittingCash] = useState(false);
   const cashInputRef = useRef<HTMLInputElement>(null);
   
-  // Focus cash input when modal opens
   useEffect(() => {
     if (showCashModal && cashInputRef.current) {
       cashInputRef.current.focus();
     }
   }, [showCashModal]);
 
-  if (!comanda) return null;
+  if (!comanda && !isMultiMode) return null;
   
-  const total = comanda.comanda_itens.reduce((acc, item) => acc + parseFloat(item.preco_unitario.toString()) * item.quantidade, 0);
+  const total = isMultiMode 
+    ? multiComandas.reduce((acc, cmd) => {
+        return acc + cmd.comanda_itens.reduce(
+          (sum, item) => sum + parseFloat(item.preco_unitario.toString()) * item.quantidade,
+          0
+        );
+      }, 0)
+    : comanda 
+      ? comanda.comanda_itens.reduce(
+          (acc, item) => acc + parseFloat(item.preco_unitario.toString()) * item.quantidade,
+          0
+        )
+      : 0;
 
   // Helper functions for currency handling
   const parseCurrencyBR = (str: string): number => {
@@ -89,7 +102,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, onClose, on
             <DollarSign className="text-green-600" size={32} />
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Finalizar Pagamento</h2>
-          <p className="text-gray-500">Comanda #{comanda.identificador_cliente}</p>
+          <p className="text-gray-500">
+            {isMultiMode 
+              ? `${multiComandas.length} comandas: ${multiComandas.map(c => `#${c.identificador_cliente}`).join(', ')}`
+              : `Comanda #${comanda?.identificador_cliente}`
+            }
+          </p>
         </div>
         
         <div className="space-y-4 mb-6">
@@ -164,7 +182,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, onClose, on
                 <Banknote className="text-green-600" size={32} />
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Pagamento em Dinheiro</h2>
-              <p className="text-gray-500">Comanda #{comanda.identificador_cliente}</p>
+              <p className="text-gray-500">
+                {isMultiMode 
+                  ? `${multiComandas.length} comandas`
+                  : `Comanda #${comanda?.identificador_cliente}`
+                }
+              </p>
             </div>
 
             <div className="space-y-4 mb-6">

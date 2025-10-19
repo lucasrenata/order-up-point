@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Barcode, FileText, Package } from 'lucide-react';
+import { Barcode, FileText, Package, Receipt } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NotificationModal } from '../components/NotificationModal';
 import { PaymentModal } from '../components/PaymentModal';
@@ -15,6 +15,8 @@ export default function Index() {
   const navigate = useNavigate();
   const { processStockReduction, isProcessing } = useStockManager();
   const [activeComanda, setActiveComanda] = useState<Comanda | null>(null);
+  const [selectedComandas, setSelectedComandas] = useState<Comanda[]>([]);
+  const [isMultiComandaMode, setIsMultiComandaMode] = useState(false);
   const [comandaCodeInput, setComandaCodeInput] = useState('');
   const [notification, setNotification] = useState({ message: '', type: 'info' as 'info' | 'error' | 'success' });
   const [produtos, setProdutos] = useState<Product[]>([]);
@@ -153,11 +155,67 @@ export default function Index() {
     }
   };
 
+  const addComandaToSelection = async (comandaId: string) => {
+    const { data: comanda, error } = await supabase
+      .from('comandas')
+      .select(`
+        *,
+        comanda_itens (
+          id, created_at, comanda_id, produto_id,
+          quantidade, preco_unitario, descricao
+        )
+      `)
+      .eq('identificador_cliente', comandaId)
+      .eq('status', 'aberta')
+      .maybeSingle();
+
+    if (error) {
+      showNotification('Erro ao buscar comanda.', 'error');
+      return;
+    }
+
+    if (!comanda) {
+      showNotification(`Comanda #${comandaId} não encontrada ou já está paga.`, 'error');
+      return;
+    }
+
+    const alreadySelected = selectedComandas.some(c => c.id === comanda.id);
+    if (alreadySelected) {
+      showNotification(`Comanda #${comandaId} já foi adicionada.`, 'info');
+      return;
+    }
+
+    const enrichedComanda = {
+      ...comanda,
+      comanda_itens: comanda.comanda_itens || []
+    };
+
+    setSelectedComandas(prev => [...prev, enrichedComanda]);
+    showNotification(`Comanda #${comandaId} adicionada! Total: ${selectedComandas.length + 1} comanda(s)`, 'success');
+    setComandaCodeInput('');
+  };
+
+  const removeComandaFromSelection = (comandaId: number) => {
+    setSelectedComandas(prev => prev.filter(c => c.id !== comandaId));
+    showNotification('Comanda removida da seleção.', 'info');
+  };
+
+  const clearMultiComandaSelection = () => {
+    setSelectedComandas([]);
+    setIsMultiComandaMode(false);
+    showNotification('Seleção limpa.', 'info');
+  };
+
   const handleActivateComanda = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && comandaCodeInput.trim() !== '') {
-      setIsLoading(true);
       const comandaId = comandaCodeInput.trim();
       
+      if (isMultiComandaMode) {
+        await addComandaToSelection(comandaId);
+        return;
+      }
+      
+      setIsLoading(true);
       console.log('Buscando comanda:', comandaId);
       
       // Primeiro busca por comanda aberta
@@ -239,59 +297,73 @@ export default function Index() {
 
 
   const handleConfirmPayment = async (total: number, formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito') => {
-    if (!activeComanda || isProcessing) return;
+    if (isProcessing) return;
+    
+    const comandasToProcess = isMultiComandaMode ? selectedComandas : (activeComanda ? [activeComanda] : []);
+    
+    if (comandasToProcess.length === 0) return;
     
     setIsLoading(true);
     
     try {
-      console.log(`💳 Processando pagamento: Comanda ${activeComanda.identificador_cliente}`);
+      console.log(`💳 Processando pagamento: ${comandasToProcess.length} comanda(s)`);
       
-      // Primeiro, processar a baixa no estoque com validação
-      const stockResult = await processStockReduction(activeComanda);
-      
-      if (!stockResult.success) {
-        throw new Error(stockResult.error || 'Erro ao processar baixa no estoque');
-      }
-      
-      // Usar data/hora brasileira atual para o pagamento
       const brazilianPaymentDateTime = getCurrentBrazilianDateTime();
+      const allStockUpdates: any[] = [];
+      const allLowStockAlerts: string[] = [];
       
-      // Confirmar o pagamento apenas se a baixa no estoque foi bem-sucedida
-      const { error } = await supabase
-        .from('comandas')
-        .update({ 
-          status: 'paga', 
-          total: total, 
-          data_pagamento: brazilianPaymentDateTime,
-          forma_pagamento: formaPagamento
-        })
-        .eq('id', activeComanda.id);
+      for (const comanda of comandasToProcess) {
+        console.log(`📦 Processando comanda #${comanda.identificador_cliente}`);
+        
+        const stockResult = await processStockReduction(comanda);
+        
+        if (!stockResult.success) {
+          throw new Error(`Erro ao processar estoque da comanda #${comanda.identificador_cliente}: ${stockResult.error}`);
+        }
+        
+        allStockUpdates.push(...stockResult.stockUpdates);
+        allLowStockAlerts.push(...stockResult.lowStockAlerts);
+        
+        const comandaTotal = comanda.comanda_itens.reduce(
+          (acc, item) => acc + parseFloat(item.preco_unitario.toString()) * item.quantidade, 
+          0
+        );
+        
+        const { error } = await supabase
+          .from('comandas')
+          .update({ 
+            status: 'paga', 
+            total: comandaTotal, 
+            data_pagamento: brazilianPaymentDateTime,
+            forma_pagamento: formaPagamento
+          })
+          .eq('id', comanda.id);
 
-      if (error) {
-        console.error('❌ Erro ao confirmar pagamento:', error);
-        throw new Error(`Erro ao processar pagamento: ${error.message}`);
+        if (error) {
+          throw new Error(`Erro ao processar pagamento da comanda #${comanda.identificador_cliente}: ${error.message}`);
+        }
       }
 
       console.log('✅ Pagamento processado com sucesso');
       
-      // Atualizar lista de produtos apenas uma vez
       await fetchProducts();
       
-      // Exibir confirmação com detalhes
-      let message = `Pagamento de ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} confirmado!`;
+      const comandasIds = comandasToProcess.map(c => `#${c.identificador_cliente}`).join(', ');
+      let message = `Pagamento de ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} confirmado! Comandas: ${comandasIds}`;
       
-      if (stockResult.stockUpdates.length > 0) {
-        message += ` Baixa realizada em ${stockResult.stockUpdates.length} produto(s).`;
+      if (allStockUpdates.length > 0) {
+        message += ` Baixa realizada em ${allStockUpdates.length} produto(s).`;
       }
       
-      if (stockResult.lowStockAlerts.length > 0) {
-        toast.warning(`Estoque baixo: ${stockResult.lowStockAlerts.join(', ')}`);
+      if (allLowStockAlerts.length > 0) {
+        toast.warning(`Estoque baixo: ${[...new Set(allLowStockAlerts)].join(', ')}`);
       }
 
       showNotification(message, 'success');
       
-      // Resetar estados
       setActiveComanda(null);
+      setSelectedComandas([]);
+      setIsMultiComandaMode(false);
       setPaymentModalOpen(false);
       
     } catch (error) {
@@ -319,7 +391,9 @@ export default function Index() {
       
       {isPaymentModalOpen && (
         <PaymentModal 
-          comanda={activeComanda} 
+          comanda={activeComanda}
+          multiComandas={selectedComandas}
+          isMultiMode={isMultiComandaMode}
           onClose={() => setPaymentModalOpen(false)} 
           onConfirmPayment={handleConfirmPayment} 
         />
@@ -345,13 +419,38 @@ export default function Index() {
                 value={comandaCodeInput} 
                 onChange={(e) => setComandaCodeInput(e.target.value)} 
                 onKeyDown={handleActivateComanda} 
-                placeholder="Ler código da COMANDA ou 300 avulso" 
+                placeholder={isMultiComandaMode 
+                  ? "Ler comandas para unir (pressione Enter após cada uma)" 
+                  : "Ler código da COMANDA ou 300 avulso"
+                }
                 className="w-full md:w-96 bg-white border border-gray-300 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                 aria-label="Campo para inserir código da comanda"
               />
             </div>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setIsMultiComandaMode(!isMultiComandaMode);
+                if (!isMultiComandaMode) {
+                  setActiveComanda(null);
+                  showNotification('Modo múltiplas comandas ativado! Leia as comandas que deseja unir.', 'info');
+                } else {
+                  setSelectedComandas([]);
+                  showNotification('Modo comanda única ativado.', 'info');
+                }
+              }}
+              className={`
+                font-bold py-3 px-6 rounded-lg transition-colors flex items-center gap-2 shadow-lg
+                ${isMultiComandaMode 
+                  ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                  : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                }
+              `}
+            >
+              <Receipt size={18} />
+              {isMultiComandaMode ? 'Modo Múltiplo: ON' : 'Modo Múltiplo: OFF'}
+            </button>
             <button 
               onClick={() => navigate('/estoque')} 
               className="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 shadow-lg"
@@ -380,9 +479,13 @@ export default function Index() {
           </div>
           <div className="lg:col-span-1">
             <OrderSummary 
-              comanda={activeComanda} 
-              onRemoveItem={handleRemoveItem} 
-              onClearComanda={handleClearComanda} 
+              comanda={isMultiComandaMode ? null : activeComanda}
+              multiComandas={isMultiComandaMode ? selectedComandas : []}
+              isMultiMode={isMultiComandaMode}
+              onRemoveItem={handleRemoveItem}
+              onRemoveComanda={removeComandaFromSelection}
+              onClearComanda={handleClearComanda}
+              onClearMultiSelection={clearMultiComandaSelection}
               onPagar={() => setPaymentModalOpen(true)}
               produtos={produtos}
             />
