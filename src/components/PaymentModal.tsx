@@ -1,14 +1,18 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { DollarSign, X, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
-import { Comanda } from '../types/types';
+import { X, DollarSign, CreditCard, Smartphone, Banknote } from 'lucide-react';
+import { Comanda, PaymentSplit } from '../types/types';
 
 interface PaymentModalProps {
   comanda: Comanda | null;
   multiComandas?: Comanda[];
   isMultiMode?: boolean;
   onClose: () => void;
-  onConfirmPayment: (total: number, formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito') => void;
+  onConfirmPayment: (
+    total: number, 
+    formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'multiplo',
+    paymentSplits?: PaymentSplit[]
+  ) => void;
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComandas = [], isMultiMode = false, onClose, onConfirmPayment }) => {
@@ -17,6 +21,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
   const [cashReceived, setCashReceived] = useState('');
   const [isSubmittingCash, setIsSubmittingCash] = useState(false);
   const cashInputRef = useRef<HTMLInputElement>(null);
+  
+  // Estados para modo múltiplas formas
+  const [isMultiPaymentMode, setIsMultiPaymentMode] = useState(false);
+  const [paymentSplits, setPaymentSplits] = useState<PaymentSplit[]>([]);
+  const [currentPaymentForm, setCurrentPaymentForm] = useState<'dinheiro' | 'pix' | 'debito' | 'credito' | null>(null);
+  const [currentPaymentValue, setCurrentPaymentValue] = useState('');
+  const [showValueInput, setShowValueInput] = useState(false);
   
   useEffect(() => {
     if (showCashModal && cashInputRef.current) {
@@ -59,24 +70,80 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
     return parseCurrencyBR(cashReceived) >= total;
   };
 
+  // Funções auxiliares para modo múltiplo
+  const getTotalPaid = (): number => {
+    return paymentSplits.reduce((sum, split) => sum + split.valor, 0);
+  };
+
+  const getRemainingAmount = (): number => {
+    return Math.max(total - getTotalPaid(), 0);
+  };
+
+  const isPaymentComplete = (): boolean => {
+    return getTotalPaid() >= total;
+  };
+
+  const formatValue = (value: string): number => {
+    const cleanStr = value.replace(/[^\d,]/g, '').replace(',', '.');
+    return parseFloat(cleanStr) || 0;
+  };
+
+  const handleAddPaymentSplit = () => {
+    if (!currentPaymentForm) return;
+    
+    const valor = formatValue(currentPaymentValue);
+    const remaining = getRemainingAmount();
+    
+    if (valor <= 0) {
+      return;
+    }
+    
+    const adjustedValor = valor > remaining ? remaining : valor;
+    const newSplit: PaymentSplit = {
+      forma_pagamento: currentPaymentForm,
+      valor: adjustedValor
+    };
+    
+    setPaymentSplits([...paymentSplits, newSplit]);
+    setCurrentPaymentForm(null);
+    setCurrentPaymentValue('');
+    setShowValueInput(false);
+  };
+
+  const handleRemovePaymentSplit = (index: number) => {
+    setPaymentSplits(paymentSplits.filter((_, i) => i !== index));
+  };
+
   const paymentOptions = [
-    { id: 'dinheiro', label: 'Dinheiro', icon: Banknote, color: 'bg-green-100 hover:bg-green-200 border-green-300' },
-    { id: 'pix', label: 'Pix', icon: Smartphone, color: 'bg-blue-100 hover:bg-blue-200 border-blue-300' },
-    { id: 'debito', label: 'Cartão Débito', icon: CreditCard, color: 'bg-purple-100 hover:bg-purple-200 border-purple-300' },
-    { id: 'credito', label: 'Cartão Crédito', icon: Wallet, color: 'bg-orange-100 hover:bg-orange-200 border-orange-300' }
+    { id: 'dinheiro', label: 'Dinheiro', icon: Banknote, color: 'hover:bg-green-50' },
+    { id: 'pix', label: 'PIX', icon: Smartphone, color: 'hover:bg-blue-50' },
+    { id: 'debito', label: 'Cartão Débito', icon: CreditCard, color: 'hover:bg-purple-50' },
+    { id: 'credito', label: 'Cartão Crédito', icon: CreditCard, color: 'hover:bg-orange-50' },
   ];
 
   const handlePaymentSelection = (paymentId: 'dinheiro' | 'pix' | 'debito' | 'credito') => {
-    setSelectedPayment(paymentId);
-    if (paymentId === 'dinheiro') {
-      setShowCashModal(true);
-      setCashReceived('');
+    if (isMultiPaymentMode) {
+      setCurrentPaymentForm(paymentId);
+      setShowValueInput(true);
+      setCurrentPaymentValue('');
+    } else {
+      setSelectedPayment(paymentId);
+      if (paymentId === 'dinheiro') {
+        setShowCashModal(true);
+        setCashReceived('');
+      }
     }
   };
 
   const handleConfirm = () => {
-    if (selectedPayment && selectedPayment !== 'dinheiro') {
-      onConfirmPayment(total, selectedPayment);
+    if (isMultiPaymentMode) {
+      if (isPaymentComplete()) {
+        onConfirmPayment(total, 'multiplo', paymentSplits);
+      }
+    } else {
+      if (selectedPayment && selectedPayment !== 'dinheiro') {
+        onConfirmPayment(total, selectedPayment);
+      }
     }
   };
 
@@ -94,74 +161,195 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
     setCashReceived('');
   };
 
+  const renderMultiPaymentMode = () => {
+    return (
+      <>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-800">
+            {isMultiPaymentMode ? 'Múltiplas Formas' : 'Forma Única'}
+          </h3>
+          <button
+            onClick={() => {
+              setIsMultiPaymentMode(!isMultiPaymentMode);
+              setPaymentSplits([]);
+              setSelectedPayment(null);
+            }}
+            className={`
+              px-4 py-2 rounded-lg font-medium transition-all text-sm
+              ${isMultiPaymentMode 
+                ? 'bg-orange-500 text-white hover:bg-orange-600' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }
+            `}
+          >
+            {isMultiPaymentMode ? '✓ Modo Múltiplo' : 'Ativar Múltiplo'}
+          </button>
+        </div>
+
+        {isMultiPaymentMode && paymentSplits.length > 0 && (
+          <div className="mb-4 space-y-2 bg-gray-50 p-3 rounded-lg border">
+            <p className="text-sm font-semibold text-gray-700 mb-2">Pagamentos Adicionados:</p>
+            {paymentSplits.map((split, index) => {
+              const option = paymentOptions.find(opt => opt.id === split.forma_pagamento);
+              const Icon = option?.icon || DollarSign;
+              return (
+                <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
+                  <div className="flex items-center gap-2">
+                    <Icon size={16} className="text-gray-600" />
+                    <span className="text-sm font-medium">{option?.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-green-600">
+                      {split.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                    <button
+                      onClick={() => handleRemovePaymentSplit(index)}
+                      className="text-red-500 hover:text-red-700 p-1"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            
+            <div className="pt-2 border-t mt-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Total Pago:</span>
+                <span className="font-bold text-green-600">
+                  {getTotalPaid().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm font-bold">
+                <span className="text-gray-800">Restante:</span>
+                <span className={getRemainingAmount() > 0 ? 'text-red-600' : 'text-green-600'}>
+                  {getRemainingAmount().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isMultiPaymentMode && !isPaymentComplete() && (
+          <div className="space-y-3 mb-4">
+            <h3 className="text-sm font-semibold text-gray-700">
+              Adicionar forma de pagamento:
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              {paymentOptions.map((option) => {
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={option.id}
+                    onClick={() => handlePaymentSelection(option.id as any)}
+                    className={`
+                      p-3 rounded-lg border-2 transition-all duration-200 flex flex-col items-center gap-2
+                      border-gray-200 ${option.color}
+                    `}
+                  >
+                    <Icon size={20} className="text-gray-600" />
+                    <span className="text-xs font-medium text-gray-700">
+                      {option.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <DollarSign className="text-green-600" size={32} />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Finalizar Pagamento</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            Pagamento
+          </h2>
           <p className="text-gray-500">
             {isMultiMode 
               ? `${multiComandas.length} comandas: ${multiComandas.map(c => `#${c.identificador_cliente}`).join(', ')}`
               : `Comanda #${comanda?.identificador_cliente}`
             }
           </p>
-        </div>
-        
-        <div className="space-y-4 mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 text-center">Selecione a forma de pagamento</h3>
-          
-          <div className="grid grid-cols-2 gap-3">
-            {paymentOptions.map((option) => {
-              const Icon = option.icon;
-              const isSelected = selectedPayment === option.id;
-              return (
-                <button
-                  key={option.id}
-                  onClick={() => handlePaymentSelection(option.id as any)}
-                  className={`
-                    p-4 rounded-lg border-2 transition-all duration-200 flex flex-col items-center gap-2
-                    ${isSelected 
-                      ? 'border-blue-500 bg-blue-50 shadow-md' 
-                      : `border-gray-200 ${option.color}`
-                    }
-                  `}
-                >
-                  <Icon size={24} className={isSelected ? 'text-blue-600' : 'text-gray-600'} />
-                  <span className={`text-sm font-medium ${isSelected ? 'text-blue-800' : 'text-gray-700'}`}>
-                    {option.label}
-                  </span>
-                </button>
-              );
-            })}
+          <div className="mt-4 p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border-2 border-green-200">
+            <p className="text-sm text-gray-600 mb-1">Total a pagar</p>
+            <p className="text-3xl font-bold text-green-600">
+              {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </p>
           </div>
         </div>
 
-        <div className="space-y-3 mb-6 bg-gray-50 p-4 rounded-lg">
-          <div className="flex justify-between text-xl font-bold">
-            <span className="text-gray-900">Total a Pagar</span>
-            <span className="text-green-600">{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-          </div>
+        <div className="space-y-4 mb-6">
+          {renderMultiPaymentMode()}
+          
+          {!isMultiPaymentMode && (
+            <>
+              <h3 className="text-lg font-semibold text-gray-800 text-center">Selecione a forma de pagamento</h3>
+          
+              <div className="grid grid-cols-2 gap-3">
+                {paymentOptions.map((option) => {
+                  const Icon = option.icon;
+                  const isSelected = selectedPayment === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => handlePaymentSelection(option.id as any)}
+                      className={`
+                        p-4 rounded-lg border-2 transition-all duration-200 flex flex-col items-center gap-2
+                        ${isSelected 
+                          ? 'border-blue-500 bg-blue-50 shadow-md' 
+                          : `border-gray-200 ${option.color}`
+                        }
+                      `}
+                    >
+                      <Icon size={24} className={isSelected ? 'text-blue-600' : 'text-gray-600'} />
+                      <span className={`text-sm font-medium ${isSelected ? 'text-blue-800' : 'text-gray-700'}`}>
+                        {option.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="space-y-3">
-          {selectedPayment !== 'dinheiro' && (
+          {isMultiPaymentMode ? (
             <button 
               onClick={handleConfirm}
-              disabled={!selectedPayment}
+              disabled={!isPaymentComplete()}
               className={`
                 w-full font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-lg shadow-lg
-                ${selectedPayment 
+                ${isPaymentComplete()
                   ? 'bg-green-500 text-white hover:bg-green-600' 
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }
               `}
             >
               <DollarSign size={22} />
-              Confirmar Pagamento
+              Confirmar Pagamento Dividido
             </button>
+          ) : (
+            selectedPayment !== 'dinheiro' && (
+              <button 
+                onClick={handleConfirm}
+                disabled={!selectedPayment}
+                className={`
+                  w-full font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-lg shadow-lg
+                  ${selectedPayment 
+                    ? 'bg-green-500 text-white hover:bg-green-600' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }
+                `}
+              >
+                <DollarSign size={22} />
+                Confirmar Pagamento
+              </button>
+            )
           )}
           <button 
             onClick={onClose} 
@@ -176,12 +364,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
       {/* Cash Payment Modal */}
       {showCashModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Banknote className="text-green-600" size={32} />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Pagamento em Dinheiro</h2>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Pagamento em Dinheiro</h2>
               <p className="text-gray-500">
                 {isMultiMode 
                   ? `${multiComandas.length} comandas`
@@ -190,62 +375,119 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
               </p>
             </div>
 
-            <div className="space-y-4 mb-6">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex justify-between text-lg font-semibold mb-2">
-                  <span className="text-gray-900">Total a pagar:</span>
-                  <span className="text-green-600">{formatCurrencyBR(total)}</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Valor recebido
-                </label>
-                <input
-                  ref={cashInputRef}
-                  type="text"
-                  value={cashReceived}
-                  onChange={(e) => setCashReceived(e.target.value)}
-                  placeholder="0,00"
-                  className="w-full p-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-                {cashReceived && !isCashAmountSufficient() && (
-                  <p className="text-red-500 text-sm mt-1">Valor insuficiente</p>
-                )}
-              </div>
-
-              {cashReceived && isCashAmountSufficient() && (
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="flex justify-between text-lg font-semibold">
-                    <span className="text-gray-900">Troco:</span>
-                    <span className="text-blue-600">{formatCurrencyBR(getChange())}</span>
-                  </div>
-                </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Valor recebido
+              </label>
+              <input
+                ref={cashInputRef}
+                type="text"
+                value={cashReceived}
+                onChange={(e) => setCashReceived(e.target.value)}
+                placeholder="R$ 0,00"
+                className="w-full p-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              {cashReceived && (
+                <p className={`mt-2 text-sm ${isCashAmountSufficient() ? 'text-green-600' : 'text-red-500'}`}>
+                  {isCashAmountSufficient() 
+                    ? `✓ Troco: ${getChange().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+                    : '⚠ Valor insuficiente'
+                  }
+                </p>
               )}
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               <button
                 onClick={handleCashConfirm}
                 disabled={!isCashAmountSufficient() || isSubmittingCash}
                 className={`
-                  w-full font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-lg shadow-lg
+                  w-full font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2
                   ${isCashAmountSufficient() && !isSubmittingCash
                     ? 'bg-green-500 text-white hover:bg-green-600' 
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }
                 `}
               >
-                <DollarSign size={22} />
-                {isSubmittingCash ? 'Processando...' : 'Confirmar e Concluir'}
+                {isSubmittingCash ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <DollarSign size={18} />
+                    Confirmar Dinheiro
+                  </>
+                )}
               </button>
               <button
                 onClick={handleCashCancel}
                 disabled={isSubmittingCash}
-                className="w-full bg-gray-200 text-gray-800 font-bold py-4 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 text-lg"
+                className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
               >
-                <X size={22} />
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Value Input Modal for Multi-Payment */}
+      {showValueInput && currentPaymentForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800 mb-2">
+                {paymentOptions.find(opt => opt.id === currentPaymentForm)?.label}
+              </h2>
+              <p className="text-sm text-gray-600">
+                Valor restante: {getRemainingAmount().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Valor a pagar nesta forma:
+              </label>
+              <input
+                type="text"
+                value={currentPaymentValue}
+                onChange={(e) => setCurrentPaymentValue(e.target.value)}
+                placeholder="0,00"
+                autoFocus
+                className="w-full p-3 text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              {currentPaymentValue && formatValue(currentPaymentValue) > getRemainingAmount() && (
+                <p className="text-orange-500 text-sm mt-1">
+                  Valor será ajustado para {getRemainingAmount().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <button
+                onClick={handleAddPaymentSplit}
+                disabled={!currentPaymentValue || formatValue(currentPaymentValue) <= 0}
+                className={`
+                  w-full font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2
+                  ${currentPaymentValue && formatValue(currentPaymentValue) > 0
+                    ? 'bg-green-500 text-white hover:bg-green-600' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }
+                `}
+              >
+                <DollarSign size={18} />
+                Adicionar
+              </button>
+              <button
+                onClick={() => {
+                  setShowValueInput(false);
+                  setCurrentPaymentForm(null);
+                  setCurrentPaymentValue('');
+                }}
+                className="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition-colors"
+              >
                 Cancelar
               </button>
             </div>

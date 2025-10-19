@@ -49,6 +49,12 @@ export interface ComandaItem {
   descricao?: string;
 }
 
+export interface PaymentSplit {
+  forma_pagamento: 'dinheiro' | 'pix' | 'debito' | 'credito';
+  valor: number;
+  troco?: number;
+}
+
 export interface Comanda {
   id: number;
   created_at: string;
@@ -56,6 +62,7 @@ export interface Comanda {
   status: 'aberta' | 'paga' | 'cancelada';
   total: number | null;
   data_pagamento: string | null;
-  forma_pagamento?: 'dinheiro' | 'pix' | 'debito' | 'credito' | null;
+  forma_pagamento?: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'multiplo' | null;
+  pagamentos_divididos?: PaymentSplit[];
   comanda_itens: ComandaItem[];
 }

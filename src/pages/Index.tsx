@@ -6,7 +6,7 @@ import { PaymentModal } from '../components/PaymentModal';
 import { OrderSummary } from '../components/OrderSummary';
 import { InputPanel } from '../components/InputPanel';
 import { supabase } from '../lib/supabase';
-import { Comanda, ComandaItem, Product } from '../types/types';
+import { Comanda, ComandaItem, Product, PaymentSplit } from '../types/types';
 import { useStockManager } from '../hooks/useStockManager';
 import { toast } from 'sonner';
 import { getCurrentBrazilianDateTime } from '../utils/dateUtils';
@@ -296,7 +296,11 @@ export default function Index() {
   };
 
 
-  const handleConfirmPayment = async (total: number, formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito') => {
+  const handleConfirmPayment = async (
+    total: number, 
+    formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'multiplo',
+    paymentSplits?: PaymentSplit[]
+  ) => {
     if (isProcessing) return;
     
     const comandasToProcess = isMultiComandaMode ? selectedComandas : (activeComanda ? [activeComanda] : []);
@@ -307,6 +311,11 @@ export default function Index() {
     
     try {
       console.log(`💳 Processando pagamento: ${comandasToProcess.length} comanda(s)`);
+      console.log(`💰 Forma de pagamento: ${formaPagamento}`);
+      
+      if (formaPagamento === 'multiplo' && paymentSplits) {
+        console.log('🔀 Pagamento dividido:', paymentSplits);
+      }
       
       const brazilianPaymentDateTime = getCurrentBrazilianDateTime();
       const allStockUpdates: any[] = [];
@@ -329,14 +338,20 @@ export default function Index() {
           0
         );
         
+        const updateData: any = { 
+          status: 'paga', 
+          total: comandaTotal, 
+          data_pagamento: brazilianPaymentDateTime,
+          forma_pagamento: formaPagamento
+        };
+        
+        if (formaPagamento === 'multiplo' && paymentSplits) {
+          updateData.pagamentos_divididos = paymentSplits;
+        }
+        
         const { error } = await supabase
           .from('comandas')
-          .update({ 
-            status: 'paga', 
-            total: comandaTotal, 
-            data_pagamento: brazilianPaymentDateTime,
-            forma_pagamento: formaPagamento
-          })
+          .update(updateData)
           .eq('id', comanda.id);
 
         if (error) {
@@ -350,6 +365,10 @@ export default function Index() {
       
       const comandasIds = comandasToProcess.map(c => `#${c.identificador_cliente}`).join(', ');
       let message = `Pagamento de ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} confirmado! Comandas: ${comandasIds}`;
+      
+      if (formaPagamento === 'multiplo' && paymentSplits) {
+        message += ` (${paymentSplits.length} formas de pagamento)`;
+      }
       
       if (allStockUpdates.length > 0) {
         message += ` Baixa realizada em ${allStockUpdates.length} produto(s).`;
