@@ -7,13 +7,15 @@ interface InputPanelProps {
   produtos: Product[];
   onAddProduto: (produto: Product) => void;
   onAddPratoPorPeso: (valor: number) => void;
+  onAddMarmitex: (valor: number) => void;
   activeComandaId?: number;
 }
 
 
-export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, onAddPratoPorPeso, activeComandaId }) => {
+export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, onAddPratoPorPeso, onAddMarmitex, activeComandaId }) => {
   const [categoriaAtiva, setCategoriaAtiva] = useState<'bebidas' | 'sobremesas'>('bebidas');
   const [valorPeso, setValorPeso] = useState('');
+  const [valorMarmitex, setValorMarmitex] = useState('');
   const [scannedBarcode, setScannedBarcode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
@@ -49,6 +51,23 @@ export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, 
       setIsLoading(true);
       await onAddPratoPorPeso(valor);
       setValorPeso('');
+      setIsLoading(false);
+    } else { 
+      alert("Por favor, insira um valor válido."); 
+    }
+  };
+
+  const handleAddMarmitex = async () => {
+    if (!activeComandaId) { 
+      alert("Por favor, ative uma comanda primeiro."); 
+      return; 
+    }
+    
+    const valor = parseFloat(valorMarmitex.replace(',', '.'));
+    if (!isNaN(valor) && valor > 0) {
+      setIsLoading(true);
+      await onAddMarmitex(valor);
+      setValorMarmitex('');
       setIsLoading(false);
     } else { 
       alert("Por favor, insira um valor válido."); 
@@ -151,6 +170,39 @@ export const InputPanel: React.FC<InputPanelProps> = ({ produtos, onAddProduto, 
           </div>
           <button 
             onClick={handleAddPeso} 
+            disabled={!activeComandaId} 
+            className="bg-green-500 text-white font-bold py-2 sm:py-3 px-4 sm:px-6 rounded-lg hover:bg-green-600 transition-colors disabled:bg-gray-300 shadow-md text-sm sm:text-base"
+          >
+            Adicionar
+          </button>
+        </div>
+      </div>
+
+      {/* Lançar Marmitex */}
+      <div className="border-2 border-gray-200 rounded-xl p-3 sm:p-4 hover:border-blue-300 transition-colors">
+        <h3 className="font-bold text-base sm:text-lg text-gray-800 mb-3 sm:mb-4 flex items-center gap-2">
+          <div className="w-6 h-6 sm:w-8 sm:h-8 bg-pink-100 rounded-full flex items-center justify-center">
+            <span className="text-sm">🍱</span>
+          </div>
+          <span className="text-sm sm:text-base">Lançar Marmitex</span>
+        </h3>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <div className="relative flex-grow">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-sm sm:text-base">R$</span>
+            <input 
+              id="valor-marmitex"
+              type="text" 
+              value={valorMarmitex} 
+              onChange={(e) => setValorMarmitex(e.target.value)} 
+              onKeyDown={(e) => e.key === 'Enter' && handleAddMarmitex()} 
+              placeholder="0,00" 
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg py-2 sm:py-3 pl-8 sm:pl-10 pr-3 sm:pr-4 text-base sm:text-lg font-bold focus:outline-none focus:ring-2 focus:ring-blue-500" 
+              disabled={!activeComandaId}
+              aria-label="Valor da marmitex em reais"
+            />
+          </div>
+          <button 
+            onClick={handleAddMarmitex} 
             disabled={!activeComandaId} 
             className="bg-green-500 text-white font-bold py-2 sm:py-3 px-4 sm:px-6 rounded-lg hover:bg-green-600 transition-colors disabled:bg-gray-300 shadow-md text-sm sm:text-base"
           >

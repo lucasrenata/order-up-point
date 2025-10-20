@@ -47,6 +47,7 @@ export interface ComandaItem {
   quantidade: number;
   preco_unitario: number;
   descricao?: string;
+  tipo_item?: 'produto' | 'prato_por_quilo' | 'marmitex';
 }
 
 export interface PaymentSplit {

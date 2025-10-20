@@ -90,7 +90,8 @@ export default function Index() {
         produto_id: itemData.produto_id,
         quantidade: itemData.quantidade,
         preco_unitario: itemData.preco_unitario,
-        descricao: itemData.descricao
+        descricao: itemData.descricao,
+        tipo_item: itemData.tipo_item
       })
       .select();
     
@@ -111,7 +112,8 @@ export default function Index() {
       produto_id: produto.id,
       quantidade: 1,
       preco_unitario: produto.preco,
-      descricao: produto.nome
+      descricao: produto.nome,
+      tipo_item: 'produto'
     });
     showNotification(`${produto.nome} adicionado!`, 'success');
   };
@@ -124,9 +126,24 @@ export default function Index() {
       produto_id: null,
       quantidade: 1,
       preco_unitario: valor,
-      descricao: 'Prato por Quilo'
+      descricao: 'Prato por Quilo',
+      tipo_item: 'prato_por_quilo'
     });
     showNotification(`Prato de ${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} adicionado!`, 'success');
+  };
+
+  const handleAddMarmitex = async (valor: number) => {
+    if (!activeComanda) return;
+    
+    await handleAddItem({
+      comanda_id: activeComanda.id,
+      produto_id: null,
+      quantidade: 1,
+      preco_unitario: valor,
+      descricao: 'Marmitex',
+      tipo_item: 'marmitex'
+    });
+    showNotification(`Marmitex de ${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} adicionado!`, 'success');
   };
 
   const handleRemoveItem = async (comandaItemId: number) => {
@@ -493,6 +510,7 @@ export default function Index() {
               produtos={produtos} 
               onAddProduto={handleAddProduto} 
               onAddPratoPorPeso={handleAddPratoPorPeso} 
+              onAddMarmitex={handleAddMarmitex}
               activeComandaId={activeComanda?.id}
             />
           </div>

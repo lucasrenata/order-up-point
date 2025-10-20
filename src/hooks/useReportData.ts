@@ -13,6 +13,7 @@ interface ReportData {
   ticketMedio: number;
   formasPagamento: { forma: string; quantidade: number; icon: string; color: string }[];
   pratoPorQuilo: number;
+  totalMarmitex: number;
 }
 
 export const useReportData = (selectedDate: string) => {
@@ -105,8 +106,18 @@ export const useReportData = (selectedDate: string) => {
 
       // Contar quantos ITENS (refeições) de "Prato por Quilo" foram vendidos
       const pratoPorQuilo = comandas?.reduce((total, comanda) => {
-        const pratosQuilo = comanda.comanda_itens?.filter(item => item.produto_id === null) || [];
+        const pratosQuilo = comanda.comanda_itens?.filter(item => 
+          item.tipo_item === 'prato_por_quilo' || (item.tipo_item === undefined && item.produto_id === null && item.descricao === 'Prato por Quilo')
+        ) || [];
         return total + pratosQuilo.length;
+      }, 0) || 0;
+
+      // Contar quantos ITENS de "Marmitex" foram vendidos
+      const totalMarmitex = comandas?.reduce((total, comanda) => {
+        const marmitex = comanda.comanda_itens?.filter(item => 
+          item.tipo_item === 'marmitex' || (item.tipo_item === undefined && item.produto_id === null && item.descricao === 'Marmitex')
+        ) || [];
+        return total + marmitex.length;
       }, 0) || 0;
 
       console.log('📈 ===== ESTATÍSTICAS FINAIS =====');
@@ -161,7 +172,8 @@ export const useReportData = (selectedDate: string) => {
         totalItens,
         ticketMedio,
         formasPagamento,
-        pratoPorQuilo
+        pratoPorQuilo,
+        totalMarmitex
       });
     } catch (error) {
       console.error('❌ Erro ao buscar dados do relatório:', error);
