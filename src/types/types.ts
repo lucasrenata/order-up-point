@@ -67,3 +67,27 @@ export interface Comanda {
   pagamentos_divididos?: PaymentSplit[];
   comanda_itens: ComandaItem[];
 }
+
+export interface Caixa {
+  id: number;
+  created_at: string;
+  numero_caixa: 1 | 2 | 3;
+  nome_operador: string;
+  valor_abertura: number;
+  status: 'aberto' | 'fechado';
+  data_abertura: string | null;
+  data_fechamento: string | null;
+}
+
+export interface CaixaRetirada {
+  id: number;
+  created_at: string;
+  caixa_id: number;
+  valor: number;
+  observacao?: string;
+  data_retirada: string;
+}
+
+export interface CaixaComRetiradas extends Caixa {
+  caixa_retiradas: CaixaRetirada[];
+}

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Barcode, FileText, Package, Receipt } from 'lucide-react';
+import { Barcode, FileText, Package, Receipt, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NotificationModal } from '../components/NotificationModal';
 import { PaymentModal } from '../components/PaymentModal';
 import { OrderSummary } from '../components/OrderSummary';
 import { InputPanel } from '../components/InputPanel';
+import { CaixaModal } from '../components/CaixaModal';
 import { supabase } from '../lib/supabase';
 import { Comanda, ComandaItem, Product, PaymentSplit } from '../types/types';
 import { useStockManager } from '../hooks/useStockManager';
@@ -22,6 +23,7 @@ export default function Index() {
   const [produtos, setProdutos] = useState<Product[]>([]);
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showCaixaModal, setShowCaixaModal] = useState(false);
 
   const showNotification = (message: string, type: 'info' | 'error' | 'success' = 'info') => {
     setNotification({ message, type });
@@ -465,6 +467,13 @@ export default function Index() {
             </div>
           </div>
           <div className="flex gap-2">
+            <button 
+              onClick={() => setShowCaixaModal(true)}
+              className="bg-yellow-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-yellow-600 transition-colors flex items-center gap-2 shadow-lg"
+            >
+              <Wallet size={18} />
+              Caixa
+            </button>
             <button
               onClick={() => {
                 setIsMultiComandaMode(!isMultiComandaMode);
@@ -529,6 +538,11 @@ export default function Index() {
           </div>
         </div>
       </main>
+      
+      <CaixaModal 
+        open={showCaixaModal} 
+        onOpenChange={setShowCaixaModal} 
+      />
     </div>
   );
 }
