@@ -66,6 +66,7 @@ export interface Comanda {
   forma_pagamento?: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'multiplo' | null;
   pagamentos_divididos?: PaymentSplit[];
   comanda_itens: ComandaItem[];
+  caixa_id?: number | null;
 }
 
 export interface Caixa {

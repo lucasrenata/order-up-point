@@ -378,6 +378,15 @@ export default function Index() {
         console.log('🔀 Pagamento dividido:', paymentSplits);
       }
       
+      // Buscar caixa aberto
+      const { data: caixaAberto } = await supabase
+        .from('caixas')
+        .select('*')
+        .eq('status', 'aberto')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
       const brazilianPaymentDateTime = getCurrentBrazilianDateTime();
       const allStockUpdates: any[] = [];
       const allLowStockAlerts: string[] = [];
@@ -403,7 +412,8 @@ export default function Index() {
           status: 'paga', 
           total: comandaTotal, 
           data_pagamento: brazilianPaymentDateTime,
-          forma_pagamento: formaPagamento
+          forma_pagamento: formaPagamento,
+          caixa_id: caixaAberto?.id || null
         };
         
         if (formaPagamento === 'multiplo' && paymentSplits) {

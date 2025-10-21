@@ -33,6 +33,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
   const {
     caixas,
     retiradas,
+    vendasDinheiro,
     loading,
     fetchCaixas,
     abrirCaixa,
@@ -142,7 +143,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
   const calcularSaldo = () => {
     if (!selectedCaixa) return 0;
     const totalRetiradas = retiradas.reduce((acc, r) => acc + r.valor, 0);
-    return selectedCaixa.valor_abertura - totalRetiradas;
+    return selectedCaixa.valor_abertura - totalRetiradas + vendasDinheiro;
   };
 
   const renderListView = () => (
@@ -290,7 +291,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span>Abertura:</span>
+                <span>💰 Abertura:</span>
                 <span className="font-semibold">
                   R$ {selectedCaixa?.valor_abertura.toFixed(2)}{' '}
                   {selectedCaixa?.data_abertura &&
@@ -300,15 +301,21 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
                     )})`}
                 </span>
               </div>
-              <div className="flex justify-between text-red-600">
-                <span>Retiradas:</span>
+              <div className="flex justify-between text-green-600">
+                <span>💵 Vendas (Dinheiro):</span>
                 <span className="font-semibold">
-                  R$ {totalRetiradas.toFixed(2)}
+                  + R$ {vendasDinheiro.toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between text-red-600">
+                <span>💸 Retiradas:</span>
+                <span className="font-semibold">
+                  - R$ {totalRetiradas.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between border-t pt-2">
-                <span className="font-semibold">Saldo:</span>
-                <span className="font-bold text-green-600">
+                <span className="font-semibold">Saldo Total:</span>
+                <span className="font-bold text-green-600 text-lg">
                   R$ {saldo.toFixed(2)}
                 </span>
               </div>

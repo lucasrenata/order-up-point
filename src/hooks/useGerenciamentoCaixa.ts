@@ -6,6 +6,7 @@ import { toast } from '@/hooks/use-toast';
 export const useGerenciamentoCaixa = () => {
   const [caixas, setCaixas] = useState<Caixa[]>([]);
   const [retiradas, setRetiradas] = useState<CaixaRetirada[]>([]);
+  const [vendasDinheiro, setVendasDinheiro] = useState(0);
   const [loading, setLoading] = useState(false);
 
   // Buscar status atual dos 3 caixas
@@ -172,6 +173,41 @@ export const useGerenciamentoCaixa = () => {
     }
   };
 
+  // Buscar vendas em dinheiro de um caixa
+  const fetchVendasDinheiro = async (caixaId: number): Promise<number> => {
+    try {
+      const { data, error } = await supabase
+        .from('comandas')
+        .select('total, forma_pagamento, pagamentos_divididos')
+        .eq('caixa_id', caixaId)
+        .eq('status', 'paga');
+
+      if (error) throw error;
+
+      let totalDinheiro = 0;
+
+      data?.forEach((comanda) => {
+        // Caso 1: Pagamento único em dinheiro
+        if (comanda.forma_pagamento === 'dinheiro') {
+          totalDinheiro += comanda.total || 0;
+        }
+        // Caso 2: Pagamento dividido (multiplo)
+        else if (comanda.forma_pagamento === 'multiplo' && comanda.pagamentos_divididos) {
+          comanda.pagamentos_divididos.forEach((pagamento: any) => {
+            if (pagamento.forma_pagamento === 'dinheiro') {
+              totalDinheiro += pagamento.valor;
+            }
+          });
+        }
+      });
+
+      return totalDinheiro;
+    } catch (error: any) {
+      console.error('Erro ao buscar vendas em dinheiro:', error);
+      return 0;
+    }
+  };
+
   // Buscar retiradas de um caixa
   const fetchRetiradas = async (caixaId: number) => {
     try {
@@ -184,6 +220,10 @@ export const useGerenciamentoCaixa = () => {
       if (error) throw error;
 
       setRetiradas((data as CaixaRetirada[]) || []);
+      
+      // Buscar vendas em dinheiro
+      const totalVendas = await fetchVendasDinheiro(caixaId);
+      setVendasDinheiro(totalVendas);
     } catch (error: any) {
       toast({
         title: 'Erro ao buscar retiradas',
@@ -200,6 +240,7 @@ export const useGerenciamentoCaixa = () => {
   return {
     caixas,
     retiradas,
+    vendasDinheiro,
     loading,
     fetchCaixas,
     abrirCaixa,
