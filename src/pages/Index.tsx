@@ -174,6 +174,48 @@ export default function Index() {
     }
   };
 
+  const handleUpdateQuantity = async (itemId: number, newQuantity: number) => {
+    if (!activeComanda) return;
+    
+    // Validações
+    if (newQuantity < 1) {
+      showNotification('Quantidade deve ser no mínimo 1', 'error');
+      return;
+    }
+    
+    if (newQuantity > 999) {
+      showNotification('Quantidade máxima: 999', 'error');
+      return;
+    }
+    
+    // Buscar item atual
+    const item = activeComanda.comanda_itens.find(i => i.id === itemId);
+    if (!item) return;
+    
+    // Atualizar no banco
+    const { error } = await supabase
+      .from('comanda_itens')
+      .update({ quantidade: newQuantity })
+      .eq('id', itemId);
+    
+    if (error) {
+      console.error('Erro ao atualizar quantidade:', error);
+      showNotification('Erro ao atualizar quantidade.', 'error');
+    } else {
+      const produto = item.produto_id ? produtos.find(p => p.id === item.produto_id) : null;
+      const nome = item.descricao || produto?.nome || 'Item';
+      const novoTotal = newQuantity * parseFloat(item.preco_unitario.toString());
+      
+      showNotification(
+        `Quantidade atualizada: ${newQuantity}x ${nome} = ${novoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`,
+        'success'
+      );
+      
+      // Recarregar comanda para atualizar totais
+      await reloadActiveComanda(activeComanda.id);
+    }
+  };
+
   const addComandaToSelection = async (comandaId: string) => {
     const { data: comanda, error } = await supabase
       .from('comandas')
@@ -533,6 +575,7 @@ export default function Index() {
               onClearComanda={handleClearComanda}
               onClearMultiSelection={clearMultiComandaSelection}
               onPagar={() => setPaymentModalOpen(true)}
+              onUpdateQuantity={handleUpdateQuantity}
               produtos={produtos}
             />
           </div>

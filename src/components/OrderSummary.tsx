@@ -13,6 +13,7 @@ interface OrderSummaryProps {
   onClearComanda: () => void;
   onClearMultiSelection?: () => void;
   onPagar: () => void;
+  onUpdateQuantity: (id: number, newQuantity: number) => void;
   produtos?: Product[];
 }
 
@@ -25,6 +26,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   onClearComanda,
   onClearMultiSelection,
   onPagar,
+  onUpdateQuantity,
   produtos = []
 }) => {
   
@@ -189,7 +191,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
               <OrderItem 
                 key={item.id} 
                 item={item} 
-                onRemove={onRemoveItem} 
+                onRemove={onRemoveItem}
+                onUpdateQuantity={onUpdateQuantity}
                 produtos={produtos}
               />
             ))}
