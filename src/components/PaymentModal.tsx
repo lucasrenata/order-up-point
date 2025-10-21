@@ -1,7 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { X, DollarSign, CreditCard, Smartphone, Banknote } from 'lucide-react';
-import { Comanda, PaymentSplit } from '../types/types';
+import { X, DollarSign, CreditCard, Smartphone, Banknote, AlertCircle } from 'lucide-react';
+import { Comanda, PaymentSplit, Caixa } from '../types/types';
+import { supabase } from '../lib/supabase';
 
 interface PaymentModalProps {
   comanda: Comanda | null;
@@ -11,7 +12,8 @@ interface PaymentModalProps {
   onConfirmPayment: (
     total: number, 
     formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'multiplo',
-    paymentSplits?: PaymentSplit[]
+    paymentSplits?: PaymentSplit[],
+    caixaId?: number
   ) => void;
 }
 
@@ -28,6 +30,31 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
   const [currentPaymentForm, setCurrentPaymentForm] = useState<'dinheiro' | 'pix' | 'debito' | 'credito' | null>(null);
   const [currentPaymentValue, setCurrentPaymentValue] = useState('');
   const [showValueInput, setShowValueInput] = useState(false);
+  
+  // Estados para seleção de caixa
+  const [selectedCaixa, setSelectedCaixa] = useState<Caixa | null>(null);
+  const [caixasAbertos, setCaixasAbertos] = useState<Caixa[]>([]);
+  const [showCaixaSelection, setShowCaixaSelection] = useState(true);
+  
+  useEffect(() => {
+    const fetchCaixasAbertos = async () => {
+      const { data } = await supabase
+        .from('caixas')
+        .select('*')
+        .eq('status', 'aberto')
+        .order('numero_caixa', { ascending: true });
+      
+      setCaixasAbertos(data || []);
+      
+      // Se só tem 1 caixa aberto, seleciona automaticamente
+      if (data && data.length === 1) {
+        setSelectedCaixa(data[0]);
+        setShowCaixaSelection(false);
+      }
+    };
+    
+    fetchCaixasAbertos();
+  }, []);
   
   useEffect(() => {
     if (showCashModal && cashInputRef.current) {
@@ -136,22 +163,24 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
   };
 
   const handleConfirm = () => {
+    if (!selectedCaixa) return;
+    
     if (isMultiPaymentMode) {
       if (isPaymentComplete()) {
-        onConfirmPayment(total, 'multiplo', paymentSplits);
+        onConfirmPayment(total, 'multiplo', paymentSplits, selectedCaixa.id);
       }
     } else {
       if (selectedPayment && selectedPayment !== 'dinheiro') {
-        onConfirmPayment(total, selectedPayment);
+        onConfirmPayment(total, selectedPayment, undefined, selectedCaixa.id);
       }
     }
   };
 
   const handleCashConfirm = () => {
-    if (isCashAmountSufficient() && !isSubmittingCash) {
+    if (isCashAmountSufficient() && !isSubmittingCash && selectedCaixa) {
       setIsSubmittingCash(true);
       setShowCashModal(false);
-      onConfirmPayment(total, 'dinheiro');
+      onConfirmPayment(total, 'dinheiro', undefined, selectedCaixa.id);
     }
   };
 
@@ -282,15 +311,97 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
           </div>
         </div>
 
-        <div className="space-y-4 mb-6">
-          {renderMultiPaymentMode()}
-          
-          {!isMultiPaymentMode && (
-            <>
-              <h3 className="text-lg font-semibold text-gray-800 text-center">Selecione a forma de pagamento</h3>
-          
-              <div className="grid grid-cols-2 gap-3">
-                {paymentOptions.map((option) => {
+        {/* Seleção de Caixa */}
+        {showCaixaSelection && caixasAbertos.length > 0 && (
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-blue-600" />
+              Selecione o caixa
+            </h3>
+            <div className="grid grid-cols-1 gap-2">
+              {caixasAbertos.map((caixa) => (
+                <button
+                  key={caixa.id}
+                  onClick={() => {
+                    setSelectedCaixa(caixa);
+                    setShowCaixaSelection(false);
+                  }}
+                  className={`
+                    p-3 rounded-lg border-2 transition-all duration-200 text-left
+                    ${selectedCaixa?.id === caixa.id 
+                      ? 'border-blue-500 bg-blue-100' 
+                      : 'border-gray-300 bg-white hover:border-blue-300 hover:bg-blue-50'
+                    }
+                  `}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-gray-800">Caixa {caixa.numero_caixa}</p>
+                      <p className="text-sm text-gray-600">{caixa.nome_operador}</p>
+                    </div>
+                    {selectedCaixa?.id === caixa.id && (
+                      <div className="text-blue-600">✓</div>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+            {selectedCaixa && (
+              <button
+                onClick={() => setShowCaixaSelection(false)}
+                className="w-full mt-3 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors font-semibold"
+              >
+                Continuar
+              </button>
+            )}
+          </div>
+        )}
+
+        {caixasAbertos.length === 0 && (
+          <div className="mb-6 p-4 bg-red-50 rounded-lg border-2 border-red-200">
+            <h3 className="text-lg font-semibold text-red-800 mb-2 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Nenhum caixa aberto
+            </h3>
+            <p className="text-sm text-red-600 mb-3">
+              Para processar pagamentos, é necessário abrir um caixa primeiro.
+            </p>
+            <button
+              onClick={onClose}
+              className="w-full bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+            >
+              Fechar
+            </button>
+          </div>
+        )}
+
+        {selectedCaixa && !showCaixaSelection && (
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Processando no:</p>
+              <p className="font-semibold text-gray-800">
+                Caixa {selectedCaixa.numero_caixa} - {selectedCaixa.nome_operador}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowCaixaSelection(true)}
+              className="text-sm text-blue-600 hover:text-blue-800 underline"
+            >
+              Trocar
+            </button>
+          </div>
+        )}
+
+        {selectedCaixa && !showCaixaSelection && caixasAbertos.length > 0 && (
+          <div className="space-y-4 mb-6">
+            {renderMultiPaymentMode()}
+            
+            {!isMultiPaymentMode && (
+              <>
+                <h3 className="text-lg font-semibold text-gray-800 text-center">Selecione a forma de pagamento</h3>
+            
+                <div className="grid grid-cols-2 gap-3">
+                  {paymentOptions.map((option) => {
                   const Icon = option.icon;
                   const isSelected = selectedPayment === option.id;
                   return (
@@ -312,13 +423,15 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
                     </button>
                   );
                 })}
-              </div>
-            </>
-          )}
-        </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
-        <div className="space-y-3">
-          {isMultiPaymentMode ? (
+        {selectedCaixa && !showCaixaSelection && caixasAbertos.length > 0 && (
+          <div className="space-y-3">
+            {isMultiPaymentMode ? (
             <button 
               onClick={handleConfirm}
               disabled={!isPaymentComplete()}
@@ -355,10 +468,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
             onClick={onClose} 
             className="w-full bg-gray-200 text-gray-800 font-bold py-4 rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2 text-lg"
           >
-            <X size={22} />
-            Cancelar
-          </button>
-        </div>
+              <X size={22} />
+              Cancelar
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Cash Payment Modal */}

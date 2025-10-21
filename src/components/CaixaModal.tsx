@@ -34,6 +34,8 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
     caixas,
     retiradas,
     vendasDinheiro,
+    vendasPorForma,
+    totalComandas,
     loading,
     fetchCaixas,
     abrirCaixa,
@@ -267,6 +269,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
   const renderDetailsView = () => {
     const totalRetiradas = retiradas.reduce((acc, r) => acc + r.valor, 0);
     const saldo = calcularSaldo();
+    const totalVendas = Object.values(vendasPorForma).reduce((acc, val) => acc + val, 0);
 
     return (
       <>
@@ -287,7 +290,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
           {/* Informações */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">📊 Informações</CardTitle>
+              <CardTitle className="text-base">📊 Saldo do Caixa</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <div className="flex justify-between">
@@ -318,6 +321,49 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
                 <span className="font-bold text-green-600 text-lg">
                   R$ {saldo.toFixed(2)}
                 </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Vendas por Forma de Pagamento */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">📊 Vendas Hoje (Todas as Formas)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>💵 Dinheiro:</span>
+                <span className="font-semibold text-green-600">
+                  R$ {(vendasPorForma.dinheiro || 0).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>📱 PIX:</span>
+                <span className="font-semibold text-blue-600">
+                  R$ {(vendasPorForma.pix || 0).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>💳 Débito:</span>
+                <span className="font-semibold text-purple-600">
+                  R$ {(vendasPorForma.debito || 0).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>💳 Crédito:</span>
+                <span className="font-semibold text-orange-600">
+                  R$ {(vendasPorForma.credito || 0).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className="font-bold">TOTAL:</span>
+                <span className="font-bold text-green-600 text-lg">
+                  R$ {totalVendas.toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between pt-1 text-gray-600">
+                <span>🧾 Comandas processadas:</span>
+                <span className="font-semibold">{totalComandas}</span>
               </div>
             </CardContent>
           </Card>

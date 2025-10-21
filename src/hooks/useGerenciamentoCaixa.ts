@@ -7,6 +7,8 @@ export const useGerenciamentoCaixa = () => {
   const [caixas, setCaixas] = useState<Caixa[]>([]);
   const [retiradas, setRetiradas] = useState<CaixaRetirada[]>([]);
   const [vendasDinheiro, setVendasDinheiro] = useState(0);
+  const [vendasPorForma, setVendasPorForma] = useState<Record<string, number>>({});
+  const [totalComandas, setTotalComandas] = useState(0);
   const [loading, setLoading] = useState(false);
 
   // Buscar status atual dos 3 caixas
@@ -208,6 +210,50 @@ export const useGerenciamentoCaixa = () => {
     }
   };
 
+  // Buscar todas as vendas de um caixa (por forma de pagamento)
+  const fetchVendasPorForma = async (caixaId: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('comandas')
+        .select('total, forma_pagamento, pagamentos_divididos')
+        .eq('caixa_id', caixaId)
+        .eq('status', 'paga');
+
+      if (error) throw error;
+
+      const vendas: Record<string, number> = {
+        dinheiro: 0,
+        pix: 0,
+        debito: 0,
+        credito: 0,
+      };
+
+      let totalComandasProcessadas = 0;
+
+      data?.forEach((comanda) => {
+        totalComandasProcessadas++;
+        
+        // Caso 1: Pagamento único
+        if (comanda.forma_pagamento !== 'multiplo') {
+          vendas[comanda.forma_pagamento] += comanda.total || 0;
+        }
+        // Caso 2: Pagamento dividido (multiplo)
+        else if (comanda.forma_pagamento === 'multiplo' && comanda.pagamentos_divididos) {
+          comanda.pagamentos_divididos.forEach((pagamento: any) => {
+            if (vendas[pagamento.forma_pagamento] !== undefined) {
+              vendas[pagamento.forma_pagamento] += pagamento.valor;
+            }
+          });
+        }
+      });
+
+      setVendasPorForma(vendas);
+      setTotalComandas(totalComandasProcessadas);
+    } catch (error: any) {
+      console.error('Erro ao buscar vendas por forma:', error);
+    }
+  };
+
   // Buscar retiradas de um caixa
   const fetchRetiradas = async (caixaId: number) => {
     try {
@@ -224,6 +270,9 @@ export const useGerenciamentoCaixa = () => {
       // Buscar vendas em dinheiro
       const totalVendas = await fetchVendasDinheiro(caixaId);
       setVendasDinheiro(totalVendas);
+
+      // Buscar vendas por todas as formas
+      await fetchVendasPorForma(caixaId);
     } catch (error: any) {
       toast({
         title: 'Erro ao buscar retiradas',
@@ -241,6 +290,8 @@ export const useGerenciamentoCaixa = () => {
     caixas,
     retiradas,
     vendasDinheiro,
+    vendasPorForma,
+    totalComandas,
     loading,
     fetchCaixas,
     abrirCaixa,
