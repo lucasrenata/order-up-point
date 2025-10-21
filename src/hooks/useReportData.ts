@@ -146,8 +146,17 @@ export const useReportData = (selectedDate: string) => {
       // Calcular formas de pagamento
       const formasPagamentoCount: { [key: string]: number } = {};
       comandas?.forEach(comanda => {
-        const forma = comanda.forma_pagamento || 'não informado';
-        formasPagamentoCount[forma] = (formasPagamentoCount[forma] || 0) + 1;
+        // Para pagamentos divididos, contar cada forma individualmente
+        if (comanda.forma_pagamento === 'multiplo' && comanda.pagamentos_divididos && comanda.pagamentos_divididos.length > 0) {
+          comanda.pagamentos_divididos.forEach((pagamento: any) => {
+            const forma = pagamento.forma_pagamento || 'não informado';
+            formasPagamentoCount[forma] = (formasPagamentoCount[forma] || 0) + 1;
+          });
+        } else {
+          // Para pagamentos únicos
+          const forma = comanda.forma_pagamento || 'não informado';
+          formasPagamentoCount[forma] = (formasPagamentoCount[forma] || 0) + 1;
+        }
       });
 
       const formasPagamento = Object.entries(formasPagamentoCount)

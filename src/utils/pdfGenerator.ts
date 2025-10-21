@@ -18,6 +18,29 @@ export const generatePDFReport = async (data: ReportData, selectedDate: string) 
     return produto?.nome || 'Produto não encontrado';
   };
 
+  const getPaymentMethodDisplay = (comanda: any) => {
+    if (comanda.forma_pagamento === 'multiplo' && comanda.pagamentos_divididos) {
+      const formas = comanda.pagamentos_divididos.map((p: any) => {
+        switch (p.forma_pagamento) {
+          case 'dinheiro': return 'Dinheiro';
+          case 'pix': return 'Pix';
+          case 'debito': return 'Débito';
+          case 'credito': return 'Crédito';
+          default: return 'Desconhecido';
+        }
+      });
+      return formas.join(' + ');
+    }
+    
+    switch (comanda.forma_pagamento) {
+      case 'dinheiro': return 'Dinheiro';
+      case 'pix': return 'Pix';
+      case 'debito': return 'Débito';
+      case 'credito': return 'Crédito';
+      default: return 'Não informado';
+    }
+  };
+
   // Criar um novo PDF
   const pdf = new jsPDF();
   
@@ -76,7 +99,8 @@ export const generatePDFReport = async (data: ReportData, selectedDate: string) 
   pdf.setFontSize(10);
   pdf.text('Comanda', 20, yPos);
   pdf.text('Data/Hora', 60, yPos);
-  pdf.text('Itens', 110, yPos);
+  pdf.text('Forma Pgto', 95, yPos);
+  pdf.text('Itens', 130, yPos);
   pdf.text('Total', 170, yPos);
   yPos += 5;
   
@@ -95,15 +119,21 @@ export const generatePDFReport = async (data: ReportData, selectedDate: string) 
     pdf.text(`#${comanda.identificador_cliente}`, 20, yPos);
     pdf.text(formatBrazilianDateTime(comanda.data_pagamento), 60, yPos);
     
+    // Forma de pagamento
+    const paymentMethod = getPaymentMethodDisplay(comanda);
+    pdf.setFontSize(8);
+    pdf.text(paymentMethod, 95, yPos);
+    pdf.setFontSize(10);
+    
     // Itens da comanda
     const itensText = comanda.comanda_itens?.map((item: any) => 
       `${getProductName(item.produto_id)} (${item.quantidade}x)`
     ).join(', ') || 'Nenhum item';
     
     // Dividir texto longo em múltiplas linhas
-    const maxWidth = 55;
+    const maxWidth = 35;
     const splitText = pdf.splitTextToSize(itensText, maxWidth);
-    pdf.text(splitText, 110, yPos);
+    pdf.text(splitText, 130, yPos);
     
     pdf.text((comanda.total || 0).toLocaleString('pt-BR', { 
       style: 'currency', 

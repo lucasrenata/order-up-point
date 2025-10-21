@@ -23,9 +23,32 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
     return produto?.img || '🍽️';
   };
 
-  const getPaymentMethodDisplay = (forma_pagamento: string | null) => {
+  const getPaymentMethodDisplay = (forma_pagamento: string | null, pagamentos_divididos?: any[]) => {
     if (!forma_pagamento) return { icon: '❓', text: 'Não informado', color: 'text-gray-500' };
     
+    // Tratamento para pagamento múltiplo/dividido
+    if (forma_pagamento === 'multiplo' && pagamentos_divididos && pagamentos_divididos.length > 0) {
+      const formas = pagamentos_divididos.map(p => {
+        switch (p.forma_pagamento) {
+          case 'dinheiro': return { icon: '💵', text: 'Dinheiro' };
+          case 'pix': return { icon: '📱', text: 'Pix' };
+          case 'debito': return { icon: '💳', text: 'Débito' };
+          case 'credito': return { icon: '🏦', text: 'Crédito' };
+          default: return { icon: '❓', text: 'Desconhecido' };
+        }
+      });
+      
+      const icons = formas.map(f => f.icon).join(' + ');
+      const texts = formas.map(f => f.text).join(' + ');
+      
+      return { 
+        icon: icons, 
+        text: texts, 
+        color: 'text-indigo-600' 
+      };
+    }
+    
+    // Pagamentos únicos
     switch (forma_pagamento) {
       case 'dinheiro':
         return { icon: '💵', text: 'Dinheiro', color: 'text-green-600' };
@@ -90,9 +113,9 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
                         {comanda.comanda_itens?.length || 0} item(s)
                       </div>
                       <div className="text-xs flex items-center gap-1 mt-1">
-                        <span className="text-sm">{getPaymentMethodDisplay(comanda.forma_pagamento).icon}</span>
-                        <span className={`hidden sm:inline ${getPaymentMethodDisplay(comanda.forma_pagamento).color}`}>
-                          {getPaymentMethodDisplay(comanda.forma_pagamento).text}
+                        <span className="text-sm">{getPaymentMethodDisplay(comanda.forma_pagamento, comanda.pagamentos_divididos).icon}</span>
+                        <span className={`hidden sm:inline ${getPaymentMethodDisplay(comanda.forma_pagamento, comanda.pagamentos_divididos).color}`}>
+                          {getPaymentMethodDisplay(comanda.forma_pagamento, comanda.pagamentos_divididos).text}
                         </span>
                       </div>
                     </div>
