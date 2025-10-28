@@ -17,6 +17,7 @@ import {
   CheckCircle,
   XCircle,
   ArrowDownCircle,
+  ArrowUpCircle,
   ArrowLeft,
   Loader2,
 } from 'lucide-react';
@@ -33,6 +34,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
   const {
     caixas,
     retiradas,
+    entradas,
     vendasDinheiro,
     vendasPorForma,
     totalComandas,
@@ -41,6 +43,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
     abrirCaixa,
     fecharCaixa,
     adicionarRetirada,
+    adicionarEntrada,
     fetchRetiradas,
   } = useGerenciamentoCaixa();
 
@@ -52,6 +55,8 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
   const [valorAbertura, setValorAbertura] = useState('');
   const [valorRetirada, setValorRetirada] = useState('');
   const [observacaoRetirada, setObservacaoRetirada] = useState('');
+  const [valorEntrada, setValorEntrada] = useState('');
+  const [observacaoEntrada, setObservacaoEntrada] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -125,6 +130,29 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
     }
   };
 
+  const handleAdicionarEntrada = async () => {
+    if (!selectedCaixa || !valorEntrada) return;
+
+    const valor = parseFloat(valorEntrada);
+    if (isNaN(valor) || valor <= 0) {
+      alert('Valor de entrada inválido');
+      return;
+    }
+
+    if (!observacaoEntrada.trim()) {
+      alert('Observação obrigatória para entradas de dinheiro');
+      return;
+    }
+
+    try {
+      await adicionarEntrada(selectedCaixa.id, valor, observacaoEntrada);
+      setValorEntrada('');
+      setObservacaoEntrada('');
+    } catch (error) {
+      // Error handled in hook
+    }
+  };
+
   const handleFecharCaixa = async () => {
     if (!selectedCaixa) return;
 
@@ -145,7 +173,8 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
   const calcularSaldo = () => {
     if (!selectedCaixa) return 0;
     const totalRetiradas = retiradas.reduce((acc, r) => acc + r.valor, 0);
-    return selectedCaixa.valor_abertura - totalRetiradas + vendasDinheiro;
+    const totalEntradas = entradas.reduce((acc, e) => acc + e.valor, 0);
+    return selectedCaixa.valor_abertura - totalRetiradas + totalEntradas + vendasDinheiro;
   };
 
   const renderListView = () => (
@@ -310,6 +339,12 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
                   + R$ {vendasDinheiro.toFixed(2)}
                 </span>
               </div>
+              <div className="flex justify-between text-green-600">
+                <span>📥 Entradas:</span>
+                <span className="font-semibold">
+                  + R$ {entradas.reduce((acc, e) => acc + e.valor, 0).toFixed(2)}
+                </span>
+              </div>
               <div className="flex justify-between text-red-600">
                 <span>💸 Retiradas:</span>
                 <span className="font-semibold">
@@ -368,11 +403,56 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
             </CardContent>
           </Card>
 
+          {/* Nova Entrada */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <ArrowUpCircle className="h-4 w-4 text-green-600" />
+                Nova Entrada de Dinheiro
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="valor-entrada">Valor (R$)</Label>
+                <Input
+                  id="valor-entrada"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={valorEntrada}
+                  onChange={(e) => setValorEntrada(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="observacao-entrada">Observação (obrigatório)</Label>
+                <Textarea
+                  id="observacao-entrada"
+                  value={observacaoEntrada}
+                  onChange={(e) => setObservacaoEntrada(e.target.value)}
+                  placeholder="Ex: Troco adicional, suprimento..."
+                  rows={2}
+                />
+              </div>
+              <Button
+                onClick={handleAdicionarEntrada}
+                className="w-full bg-green-600 hover:bg-green-700"
+                disabled={loading || !valorEntrada || !observacaoEntrada.trim()}
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Adicionar Entrada'
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Nova Retirada */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <ArrowDownCircle className="h-4 w-4" />
+                <ArrowDownCircle className="h-4 w-4 text-red-600" />
                 Nova Retirada
               </CardTitle>
             </CardHeader>
@@ -401,7 +481,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
               </div>
               <Button
                 onClick={handleAdicionarRetirada}
-                className="w-full"
+                className="w-full bg-red-600 hover:bg-red-700"
                 disabled={loading || !valorRetirada}
               >
                 {loading ? (
@@ -410,6 +490,46 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
                   'Adicionar Retirada'
                 )}
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Histórico de Entradas */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">📋 Histórico de Entradas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {entradas.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhuma entrada registrada
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {entradas.map((entrada) => (
+                    <div
+                      key={entrada.id}
+                      className="border rounded-lg p-3 space-y-1 bg-green-50"
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-semibold text-green-600">
+                          + R$ {entrada.valor.toFixed(2)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(
+                            new Date(entrada.data_entrada),
+                            'dd/MM/yyyy HH:mm'
+                          )}
+                        </span>
+                      </div>
+                      {entrada.observacao && (
+                        <p className="text-xs text-muted-foreground">
+                          "{entrada.observacao}"
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 

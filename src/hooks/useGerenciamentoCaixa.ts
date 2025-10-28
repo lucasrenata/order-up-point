@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Caixa, CaixaRetirada } from '@/types/types';
+import { Caixa, CaixaRetirada, CaixaEntrada } from '@/types/types';
 import { toast } from '@/hooks/use-toast';
 
 export const useGerenciamentoCaixa = () => {
   const [caixas, setCaixas] = useState<Caixa[]>([]);
   const [retiradas, setRetiradas] = useState<CaixaRetirada[]>([]);
+  const [entradas, setEntradas] = useState<CaixaEntrada[]>([]);
   const [vendasDinheiro, setVendasDinheiro] = useState(0);
   const [vendasPorForma, setVendasPorForma] = useState<Record<string, number>>({});
   const [totalComandas, setTotalComandas] = useState(0);
@@ -175,6 +176,42 @@ export const useGerenciamentoCaixa = () => {
     }
   };
 
+  // Adicionar entrada
+  const adicionarEntrada = async (
+    caixaId: number,
+    valor: number,
+    observacao?: string
+  ) => {
+    try {
+      setLoading(true);
+
+      const { error } = await supabase.from('caixa_entradas').insert({
+        caixa_id: caixaId,
+        valor: valor,
+        observacao: observacao || '',
+        data_entrada: new Date().toISOString(),
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Entrada registrada',
+        description: `R$ ${valor.toFixed(2)}`,
+      });
+
+      await fetchRetiradas(caixaId);
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao registrar entrada',
+        description: error.message,
+        variant: 'destructive',
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Buscar vendas em dinheiro de um caixa
   const fetchVendasDinheiro = async (caixaId: number): Promise<number> => {
     try {
@@ -254,6 +291,23 @@ export const useGerenciamentoCaixa = () => {
     }
   };
 
+  // Buscar entradas de um caixa
+  const fetchEntradas = async (caixaId: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('caixa_entradas')
+        .select('*')
+        .eq('caixa_id', caixaId)
+        .order('data_entrada', { ascending: false });
+
+      if (error) throw error;
+
+      setEntradas((data as CaixaEntrada[]) || []);
+    } catch (error: any) {
+      console.error('Erro ao buscar entradas:', error);
+    }
+  };
+
   // Buscar retiradas de um caixa
   const fetchRetiradas = async (caixaId: number) => {
     try {
@@ -267,6 +321,9 @@ export const useGerenciamentoCaixa = () => {
 
       setRetiradas((data as CaixaRetirada[]) || []);
       
+      // Buscar entradas
+      await fetchEntradas(caixaId);
+      
       // Buscar vendas em dinheiro
       const totalVendas = await fetchVendasDinheiro(caixaId);
       setVendasDinheiro(totalVendas);
@@ -275,7 +332,7 @@ export const useGerenciamentoCaixa = () => {
       await fetchVendasPorForma(caixaId);
     } catch (error: any) {
       toast({
-        title: 'Erro ao buscar retiradas',
+        title: 'Erro ao buscar movimentações',
         description: error.message,
         variant: 'destructive',
       });
@@ -289,6 +346,7 @@ export const useGerenciamentoCaixa = () => {
   return {
     caixas,
     retiradas,
+    entradas,
     vendasDinheiro,
     vendasPorForma,
     totalComandas,
@@ -297,6 +355,7 @@ export const useGerenciamentoCaixa = () => {
     abrirCaixa,
     fecharCaixa,
     adicionarRetirada,
+    adicionarEntrada,
     fetchRetiradas,
   };
 };

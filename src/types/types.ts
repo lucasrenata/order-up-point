@@ -89,6 +89,15 @@ export interface CaixaRetirada {
   data_retirada: string;
 }
 
+export interface CaixaEntrada {
+  id: number;
+  created_at: string;
+  caixa_id: number;
+  valor: number;
+  observacao?: string;
+  data_entrada: string;
+}
+
 export interface CaixaComRetiradas extends Caixa {
   caixa_retiradas: CaixaRetirada[];
 }
