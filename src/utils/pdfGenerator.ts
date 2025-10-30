@@ -9,6 +9,10 @@ interface ReportData {
   totalItens: number;
   ticketMedio: number;
   formasPagamento: { forma: string; quantidade: number; icon: string; color: string }[];
+  totalDescontos: number;
+  totalBruto: number;
+  totalLiquido: number;
+  comandasComDesconto: number;
 }
 
 export const generatePDFReport = async (data: ReportData, selectedDate: string) => {
@@ -67,7 +71,11 @@ export const generatePDFReport = async (data: ReportData, selectedDate: string) 
   yPos += 10;
   
   pdf.setFontSize(12);
-  pdf.text(`Total de Vendas: ${data.totalVendas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 20, yPos);
+  pdf.text(`Faturamento Bruto: ${data.totalBruto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 20, yPos);
+  yPos += 8;
+  pdf.text(`Total Descontos: ${data.totalDescontos.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (${data.comandasComDesconto} comandas)`, 20, yPos);
+  yPos += 8;
+  pdf.text(`Faturamento Líquido: ${data.totalLiquido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 20, yPos);
   yPos += 8;
   pdf.text(`Comandas Pagas: ${data.comandas.length}`, 20, yPos);
   yPos += 8;
@@ -98,10 +106,11 @@ export const generatePDFReport = async (data: ReportData, selectedDate: string) 
   // Cabeçalho da tabela
   pdf.setFontSize(10);
   pdf.text('Comanda', 20, yPos);
-  pdf.text('Data/Hora', 60, yPos);
-  pdf.text('Forma Pgto', 95, yPos);
-  pdf.text('Itens', 130, yPos);
-  pdf.text('Total', 170, yPos);
+  pdf.text('Data/Hora', 55, yPos);
+  pdf.text('Forma Pgto', 90, yPos);
+  pdf.text('Itens', 120, yPos);
+  pdf.text('Desconto', 150, yPos);
+  pdf.text('Total', 175, yPos);
   yPos += 5;
   
   // Linha separadora
@@ -117,12 +126,12 @@ export const generatePDFReport = async (data: ReportData, selectedDate: string) 
     }
     
     pdf.text(`#${comanda.identificador_cliente}`, 20, yPos);
-    pdf.text(formatBrazilianDateTime(comanda.data_pagamento), 60, yPos);
+    pdf.text(formatBrazilianDateTime(comanda.data_pagamento), 55, yPos);
     
     // Forma de pagamento
     const paymentMethod = getPaymentMethodDisplay(comanda);
     pdf.setFontSize(8);
-    pdf.text(paymentMethod, 95, yPos);
+    pdf.text(paymentMethod, 90, yPos);
     pdf.setFontSize(10);
     
     // Itens da comanda
@@ -131,14 +140,20 @@ export const generatePDFReport = async (data: ReportData, selectedDate: string) 
     ).join(', ') || 'Nenhum item';
     
     // Dividir texto longo em múltiplas linhas
-    const maxWidth = 35;
+    const maxWidth = 25;
     const splitText = pdf.splitTextToSize(itensText, maxWidth);
-    pdf.text(splitText, 130, yPos);
+    pdf.text(splitText, 120, yPos);
+    
+    // Desconto
+    const descontoText = comanda.desconto && comanda.desconto > 0
+      ? `- R$ ${comanda.desconto.toFixed(2)}`
+      : '-';
+    pdf.text(descontoText, 150, yPos);
     
     pdf.text((comanda.total || 0).toLocaleString('pt-BR', { 
       style: 'currency', 
       currency: 'BRL' 
-    }), 170, yPos);
+    }), 175, yPos);
     
     yPos += Math.max(6, splitText.length * 4);
   });

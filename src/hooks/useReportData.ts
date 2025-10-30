@@ -14,6 +14,10 @@ interface ReportData {
   formasPagamento: { forma: string; quantidade: number; icon: string; color: string }[];
   pratoPorQuilo: number;
   totalMarmitex: number;
+  totalDescontos: number;
+  totalBruto: number;
+  totalLiquido: number;
+  comandasComDesconto: number;
 }
 
 export const useReportData = (selectedDate: string) => {
@@ -171,7 +175,21 @@ export const useReportData = (selectedDate: string) => {
         })
         .sort((a, b) => b.quantidade - a.quantidade);
 
+      // Calcular estatísticas de desconto
+      const totalDescontos = comandas?.reduce((sum, comanda) => {
+        return sum + (comanda.desconto || 0);
+      }, 0) || 0;
+
+      const totalBruto = comandas?.reduce((sum, comanda) => {
+        return sum + (comanda.total || 0);
+      }, 0) || 0;
+
+      const totalLiquido = totalBruto - totalDescontos;
+
+      const comandasComDesconto = comandas?.filter(c => c.desconto && c.desconto > 0).length || 0;
+
       console.log('💳 Formas de pagamento:', formasPagamento);
+      console.log('🏷️ Total de descontos:', totalDescontos.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
       console.log('✅ ===== RELATÓRIO CONCLUÍDO =====');
 
       setReportData({
@@ -182,7 +200,11 @@ export const useReportData = (selectedDate: string) => {
         ticketMedio,
         formasPagamento,
         pratoPorQuilo,
-        totalMarmitex
+        totalMarmitex,
+        totalDescontos,
+        totalBruto,
+        totalLiquido,
+        comandasComDesconto
       });
     } catch (error) {
       console.error('❌ Erro ao buscar dados do relatório:', error);

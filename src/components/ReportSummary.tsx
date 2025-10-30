@@ -11,6 +11,10 @@ interface ReportSummaryProps {
     formasPagamento: { forma: string; quantidade: number; icon: string; color: string }[];
     pratoPorQuilo: number;
     totalMarmitex: number;
+    totalDescontos: number;
+    totalBruto: number;
+    totalLiquido: number;
+    comandasComDesconto: number;
   };
   selectedDate: string;
 }
@@ -22,17 +26,64 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate
 
   return (
     <div className="mb-8">
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Faturamento Bruto</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {data.totalBruto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">antes dos descontos</p>
+            </div>
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <DollarSign className="text-blue-600" size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Total Descontos</p>
+              <p className="text-2xl font-bold text-orange-600">
+                {data.totalDescontos.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">{data.comandasComDesconto} comandas</p>
+            </div>
+            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl">🏷️</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Faturamento Líquido</p>
+              <p className="text-2xl font-bold text-green-600">
+                {data.totalLiquido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">após descontos</p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+              <DollarSign className="text-green-600" size={24} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total de Vendas</p>
-              <p className="text-2xl font-bold text-green-600">
+              <p className="text-2xl font-bold text-indigo-600">
                 {data.totalVendas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </p>
             </div>
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-              <DollarSign className="text-green-600" size={24} />
+            <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+              <DollarSign className="text-indigo-600" size={24} />
             </div>
           </div>
         </div>

@@ -93,6 +93,9 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
                 Itens
               </th>
               <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Desconto
+              </th>
+              <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Total
               </th>
             </tr>
@@ -147,6 +150,25 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
                       </div>
                     ))}
                   </div>
+                </td>
+                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-sm">
+                  {comanda.desconto && comanda.desconto > 0 ? (
+                    <div className="text-orange-600 font-semibold">
+                      - R$ {comanda.desconto.toFixed(2)}
+                      {comanda.desconto_percentual && (
+                        <span className="text-xs text-gray-500 ml-1">
+                          ({comanda.desconto_percentual}%)
+                        </span>
+                      )}
+                      {comanda.motivo_desconto && (
+                        <p className="text-xs text-gray-500 italic mt-1">
+                          {comanda.motivo_desconto}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
                 </td>
                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
                   {(comanda.total || 0).toLocaleString('pt-BR', { 

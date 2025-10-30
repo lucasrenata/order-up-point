@@ -13,7 +13,10 @@ interface PaymentModalProps {
     total: number, 
     formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'multiplo',
     paymentSplits?: PaymentSplit[],
-    caixaId?: number
+    caixaId?: number,
+    desconto?: number,
+    descontoPercentual?: number,
+    motivoDesconto?: string
   ) => void;
 }
 
@@ -35,6 +38,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
   const [selectedCaixa, setSelectedCaixa] = useState<Caixa | null>(null);
   const [caixasAbertos, setCaixasAbertos] = useState<Caixa[]>([]);
   const [showCaixaSelection, setShowCaixaSelection] = useState(true);
+  
+  // Estados para desconto
+  const [showDiscountInput, setShowDiscountInput] = useState(false);
+  const [discountType, setDiscountType] = useState<'valor' | 'percentual'>('valor');
+  const [discountValue, setDiscountValue] = useState('');
+  const [discountReason, setDiscountReason] = useState('');
+  const [appliedDiscount, setAppliedDiscount] = useState(0);
   
   useEffect(() => {
     const fetchCaixasAbertos = async () => {
@@ -64,19 +74,23 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
 
   if (!comanda && !isMultiMode) return null;
   
-  const total = isMultiMode 
-    ? multiComandas.reduce((acc, cmd) => {
-        return acc + cmd.comanda_itens.reduce(
-          (sum, item) => sum + parseFloat(item.preco_unitario.toString()) * item.quantidade,
-          0
-        );
-      }, 0)
-    : comanda 
-      ? comanda.comanda_itens.reduce(
-          (acc, item) => acc + parseFloat(item.preco_unitario.toString()) * item.quantidade,
-          0
-        )
-      : 0;
+  const getSubtotal = (): number => {
+    return isMultiMode 
+      ? multiComandas.reduce((acc, cmd) => {
+          return acc + cmd.comanda_itens.reduce(
+            (sum, item) => sum + parseFloat(item.preco_unitario.toString()) * item.quantidade,
+            0
+          );
+        }, 0)
+      : comanda 
+        ? comanda.comanda_itens.reduce(
+            (acc, item) => acc + parseFloat(item.preco_unitario.toString()) * item.quantidade,
+            0
+          )
+        : 0;
+  };
+  
+  const total = getSubtotal() - appliedDiscount;
 
   // Helper functions for currency handling
   const parseCurrencyBR = (str: string): number => {
@@ -141,6 +155,38 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
     setPaymentSplits(paymentSplits.filter((_, i) => i !== index));
   };
 
+  const calculateDiscountValue = (): number => {
+    const subtotal = getSubtotal();
+    
+    if (discountType === 'percentual') {
+      const percentage = parseFloat(discountValue) || 0;
+      if (percentage < 0 || percentage > 100) return 0;
+      return (subtotal * percentage) / 100;
+    } else {
+      const valor = parseFloat(discountValue.replace(',', '.')) || 0;
+      return Math.min(Math.max(valor, 0), subtotal);
+    }
+  };
+
+  const handleApplyDiscount = () => {
+    const discountAmount = calculateDiscountValue();
+    
+    if (discountAmount === 0) {
+      alert('Valor de desconto inválido');
+      return;
+    }
+    
+    setAppliedDiscount(discountAmount);
+    setShowDiscountInput(false);
+  };
+
+  const handleRemoveDiscount = () => {
+    setAppliedDiscount(0);
+    setDiscountValue('');
+    setDiscountReason('');
+    setDiscountType('valor');
+  };
+
   const paymentOptions = [
     { id: 'dinheiro', label: 'Dinheiro', icon: Banknote, color: 'hover:bg-green-50' },
     { id: 'pix', label: 'PIX', icon: Smartphone, color: 'hover:bg-blue-50' },
@@ -165,13 +211,33 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
   const handleConfirm = () => {
     if (!selectedCaixa) return;
     
+    const descontoPercentual = discountType === 'percentual' 
+      ? parseFloat(discountValue) 
+      : undefined;
+    
     if (isMultiPaymentMode) {
       if (isPaymentComplete()) {
-        onConfirmPayment(total, 'multiplo', paymentSplits, selectedCaixa.id);
+        onConfirmPayment(
+          total, 
+          'multiplo', 
+          paymentSplits, 
+          selectedCaixa.id,
+          appliedDiscount > 0 ? appliedDiscount : undefined,
+          descontoPercentual,
+          discountReason || undefined
+        );
       }
     } else {
       if (selectedPayment && selectedPayment !== 'dinheiro') {
-        onConfirmPayment(total, selectedPayment, undefined, selectedCaixa.id);
+        onConfirmPayment(
+          total, 
+          selectedPayment, 
+          undefined, 
+          selectedCaixa.id,
+          appliedDiscount > 0 ? appliedDiscount : undefined,
+          descontoPercentual,
+          discountReason || undefined
+        );
       }
     }
   };
@@ -180,7 +246,20 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
     if (isCashAmountSufficient() && !isSubmittingCash && selectedCaixa) {
       setIsSubmittingCash(true);
       setShowCashModal(false);
-      onConfirmPayment(total, 'dinheiro', undefined, selectedCaixa.id);
+      
+      const descontoPercentual = discountType === 'percentual' 
+        ? parseFloat(discountValue) 
+        : undefined;
+      
+      onConfirmPayment(
+        total, 
+        'dinheiro', 
+        undefined, 
+        selectedCaixa.id,
+        appliedDiscount > 0 ? appliedDiscount : undefined,
+        descontoPercentual,
+        discountReason || undefined
+      );
     }
   };
 
@@ -304,12 +383,173 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
             }
           </p>
           <div className="mt-4 p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border-2 border-green-200">
+            {appliedDiscount > 0 && (
+              <div className="mb-2 pb-2 border-b border-green-300">
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Subtotal:</span>
+                  <span className="line-through">
+                    {getSubtotal().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm text-orange-600 font-semibold">
+                  <span>Desconto:</span>
+                  <span>- {appliedDiscount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                </div>
+              </div>
+            )}
             <p className="text-sm text-gray-600 mb-1">Total a pagar</p>
             <p className="text-3xl font-bold text-green-600">
               {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
         </div>
+
+        {/* Seção de Desconto */}
+        {!showDiscountInput && appliedDiscount === 0 && (
+          <button
+            onClick={() => setShowDiscountInput(true)}
+            className="w-full mb-4 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-all flex items-center justify-center gap-2 text-gray-600 hover:text-orange-600"
+          >
+            <span className="text-xl">🏷️</span>
+            <span className="font-semibold">Adicionar Desconto</span>
+          </button>
+        )}
+
+        {showDiscountInput && (
+          <div className="mb-4 p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                🏷️ Aplicar Desconto
+              </h3>
+              <button
+                onClick={() => {
+                  setShowDiscountInput(false);
+                  setDiscountValue('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="flex gap-2 mb-3">
+              <button
+                onClick={() => setDiscountType('valor')}
+                className={`flex-1 py-2 rounded-lg font-medium transition-all ${
+                  discountType === 'valor'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-white text-gray-700 border border-gray-300'
+                }`}
+              >
+                R$ Valor
+              </button>
+              <button
+                onClick={() => setDiscountType('percentual')}
+                className={`flex-1 py-2 rounded-lg font-medium transition-all ${
+                  discountType === 'percentual'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-white text-gray-700 border border-gray-300'
+                }`}
+              >
+                % Percentual
+              </button>
+            </div>
+            
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {discountType === 'valor' ? 'Valor do desconto (R$)' : 'Percentual (%)'}
+              </label>
+              <input
+                type="number"
+                step={discountType === 'valor' ? '0.01' : '1'}
+                min="0"
+                max={discountType === 'percentual' ? '100' : undefined}
+                value={discountValue}
+                onChange={(e) => setDiscountValue(e.target.value)}
+                placeholder={discountType === 'valor' ? '0.00' : '0'}
+                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-lg font-semibold"
+                autoFocus
+              />
+              {discountType === 'valor' && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Máximo: {getSubtotal().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+              )}
+            </div>
+            
+            {discountValue && parseFloat(discountValue) > 0 && (
+              <div className="mb-3 p-2 bg-white rounded border border-orange-300">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Desconto:</span>
+                  <span className="font-bold text-orange-600">
+                    - {calculateDiscountValue().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm font-bold">
+                  <span className="text-gray-800">Total com desconto:</span>
+                  <span className="text-green-600">
+                    {(getSubtotal() - calculateDiscountValue()).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
+              </div>
+            )}
+            
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Motivo (opcional)
+              </label>
+              <input
+                type="text"
+                value={discountReason}
+                onChange={(e) => setDiscountReason(e.target.value)}
+                placeholder="Ex: Cliente frequente, promoção... (opcional)"
+                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                maxLength={100}
+              />
+            </div>
+            
+            <button
+              onClick={handleApplyDiscount}
+              disabled={!discountValue || parseFloat(discountValue) <= 0}
+              className="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 transition-colors font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              Aplicar Desconto
+            </button>
+          </div>
+        )}
+
+        {appliedDiscount > 0 && !showDiscountInput && (
+          <div className="mb-4 p-3 bg-orange-50 rounded-lg border-2 border-orange-300">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-semibold text-orange-800 flex items-center gap-2">
+                🏷️ Desconto Aplicado
+              </h4>
+              <button
+                onClick={handleRemoveDiscount}
+                className="text-red-500 hover:text-red-700 text-sm underline"
+              >
+                Remover
+              </button>
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Subtotal:</span>
+                <span className="font-semibold">
+                  {getSubtotal().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Desconto:</span>
+                <span className="font-semibold text-orange-600">
+                  - {appliedDiscount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
+              {discountReason && (
+                <p className="text-xs text-gray-500 italic">"{discountReason}"</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Seleção de Caixa */}
         {showCaixaSelection && caixasAbertos.length > 0 && (

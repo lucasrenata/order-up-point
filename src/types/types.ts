@@ -62,6 +62,9 @@ export interface Comanda {
   identificador_cliente: string;
   status: 'aberta' | 'paga' | 'cancelada';
   total: number | null;
+  desconto?: number | null;
+  desconto_percentual?: number | null;
+  motivo_desconto?: string | null;
   data_pagamento: string | null;
   forma_pagamento?: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'multiplo' | null;
   pagamentos_divididos?: PaymentSplit[];

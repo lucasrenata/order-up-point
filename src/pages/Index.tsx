@@ -361,7 +361,10 @@ export default function Index() {
     total: number, 
     formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'multiplo',
     paymentSplits?: PaymentSplit[],
-    caixaId?: number
+    caixaId?: number,
+    desconto?: number,
+    descontoPercentual?: number,
+    motivoDesconto?: string
   ) => {
     if (isProcessing) return;
     
@@ -374,6 +377,10 @@ export default function Index() {
     try {
       console.log(`💳 Processando pagamento: ${comandasToProcess.length} comanda(s)`);
       console.log(`💰 Forma de pagamento: ${formaPagamento}`);
+      
+      if (desconto && desconto > 0) {
+        console.log(`🏷️ Desconto aplicado: R$ ${desconto.toFixed(2)}`);
+      }
       
       if (formaPagamento === 'multiplo' && paymentSplits) {
         console.log('🔀 Pagamento dividido:', paymentSplits);
@@ -408,6 +415,16 @@ export default function Index() {
           caixa_id: caixaId || null
         };
         
+        if (desconto && desconto > 0) {
+          updateData.desconto = desconto;
+          if (descontoPercentual) {
+            updateData.desconto_percentual = descontoPercentual;
+          }
+          if (motivoDesconto && motivoDesconto.trim()) {
+            updateData.motivo_desconto = motivoDesconto;
+          }
+        }
+        
         if (formaPagamento === 'multiplo' && paymentSplits) {
           updateData.pagamentos_divididos = paymentSplits;
         }
@@ -427,7 +444,13 @@ export default function Index() {
       await fetchProducts();
       
       const comandasIds = comandasToProcess.map(c => `#${c.identificador_cliente}`).join(', ');
-      let message = `Pagamento de ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} confirmado! Comandas: ${comandasIds}`;
+      let message = `Pagamento de ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} confirmado!`;
+      
+      if (desconto && desconto > 0) {
+        message += ` (Desconto: R$ ${desconto.toFixed(2)})`;
+      }
+      
+      message += ` Comandas: ${comandasIds}`;
       
       if (formaPagamento === 'multiplo' && paymentSplits) {
         message += ` (${paymentSplits.length} formas de pagamento)`;
