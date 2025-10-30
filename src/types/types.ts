@@ -98,6 +98,17 @@ export interface CaixaEntrada {
   data_entrada: string;
 }
 
+export interface CaixaPagamentoReserva {
+  id: number;
+  created_at: string;
+  caixa_id: number;
+  valor: number;
+  forma_pagamento: 'dinheiro' | 'pix' | 'debito' | 'credito';
+  cliente_nome: string;
+  observacao?: string;
+  data_pagamento: string;
+}
+
 export interface CaixaComRetiradas extends Caixa {
   caixa_retiradas: CaixaRetirada[];
 }

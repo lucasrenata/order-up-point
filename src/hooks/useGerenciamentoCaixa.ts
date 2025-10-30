@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Caixa, CaixaRetirada, CaixaEntrada } from '@/types/types';
+import { Caixa, CaixaRetirada, CaixaEntrada, CaixaPagamentoReserva } from '@/types/types';
 import { toast } from '@/hooks/use-toast';
 
 export const useGerenciamentoCaixa = () => {
   const [caixas, setCaixas] = useState<Caixa[]>([]);
   const [retiradas, setRetiradas] = useState<CaixaRetirada[]>([]);
   const [entradas, setEntradas] = useState<CaixaEntrada[]>([]);
+  const [pagamentosReserva, setPagamentosReserva] = useState<CaixaPagamentoReserva[]>([]);
   const [vendasDinheiro, setVendasDinheiro] = useState(0);
   const [vendasPorForma, setVendasPorForma] = useState<Record<string, number>>({});
   const [totalComandas, setTotalComandas] = useState(0);
@@ -212,6 +213,46 @@ export const useGerenciamentoCaixa = () => {
     }
   };
 
+  // Adicionar pagamento de reserva
+  const adicionarPagamentoReserva = async (
+    caixaId: number,
+    valor: number,
+    formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito',
+    clienteNome: string,
+    observacao?: string
+  ) => {
+    try {
+      setLoading(true);
+
+      const { error } = await supabase.from('caixa_pagamentos_reserva').insert({
+        caixa_id: caixaId,
+        valor: valor,
+        forma_pagamento: formaPagamento,
+        cliente_nome: clienteNome,
+        observacao: observacao || '',
+        data_pagamento: new Date().toISOString(),
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Pagamento de reserva registrado',
+        description: `${clienteNome} - R$ ${valor.toFixed(2)} (${formaPagamento})`,
+      });
+
+      await fetchRetiradas(caixaId);
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao registrar pagamento',
+        description: error.message,
+        variant: 'destructive',
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Buscar vendas em dinheiro de um caixa
   const fetchVendasDinheiro = async (caixaId: number): Promise<number> => {
     try {
@@ -247,16 +288,40 @@ export const useGerenciamentoCaixa = () => {
     }
   };
 
+  // Buscar pagamentos de reserva
+  const fetchPagamentosReserva = async (caixaId: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('caixa_pagamentos_reserva')
+        .select('*')
+        .eq('caixa_id', caixaId)
+        .order('data_pagamento', { ascending: false });
+
+      if (error) throw error;
+
+      setPagamentosReserva((data as CaixaPagamentoReserva[]) || []);
+    } catch (error: any) {
+      console.error('Erro ao buscar pagamentos de reserva:', error);
+    }
+  };
+
   // Buscar todas as vendas de um caixa (por forma de pagamento)
   const fetchVendasPorForma = async (caixaId: number) => {
     try {
-      const { data, error } = await supabase
+      const { data: comandasData, error: comandasError } = await supabase
         .from('comandas')
         .select('total, forma_pagamento, pagamentos_divididos')
         .eq('caixa_id', caixaId)
         .eq('status', 'paga');
 
-      if (error) throw error;
+      if (comandasError) throw comandasError;
+
+      const { data: reservasData, error: reservasError } = await supabase
+        .from('caixa_pagamentos_reserva')
+        .select('valor, forma_pagamento')
+        .eq('caixa_id', caixaId);
+
+      if (reservasError) throw reservasError;
 
       const vendas: Record<string, number> = {
         dinheiro: 0,
@@ -267,7 +332,7 @@ export const useGerenciamentoCaixa = () => {
 
       let totalComandasProcessadas = 0;
 
-      data?.forEach((comanda) => {
+      comandasData?.forEach((comanda) => {
         totalComandasProcessadas++;
         
         // Caso 1: Pagamento único
@@ -281,6 +346,13 @@ export const useGerenciamentoCaixa = () => {
               vendas[pagamento.forma_pagamento] += pagamento.valor;
             }
           });
+        }
+      });
+
+      // Adicionar pagamentos de reserva
+      reservasData?.forEach((reserva) => {
+        if (vendas[reserva.forma_pagamento] !== undefined) {
+          vendas[reserva.forma_pagamento] += reserva.valor;
         }
       });
 
@@ -324,6 +396,9 @@ export const useGerenciamentoCaixa = () => {
       // Buscar entradas
       await fetchEntradas(caixaId);
       
+      // Buscar pagamentos de reserva
+      await fetchPagamentosReserva(caixaId);
+      
       // Buscar vendas em dinheiro
       const totalVendas = await fetchVendasDinheiro(caixaId);
       setVendasDinheiro(totalVendas);
@@ -347,6 +422,7 @@ export const useGerenciamentoCaixa = () => {
     caixas,
     retiradas,
     entradas,
+    pagamentosReserva,
     vendasDinheiro,
     vendasPorForma,
     totalComandas,
@@ -356,6 +432,7 @@ export const useGerenciamentoCaixa = () => {
     fecharCaixa,
     adicionarRetirada,
     adicionarEntrada,
+    adicionarPagamentoReserva,
     fetchRetiradas,
   };
 };

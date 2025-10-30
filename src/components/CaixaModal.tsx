@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGerenciamentoCaixa } from '@/hooks/useGerenciamentoCaixa';
 import { Caixa } from '@/types/types';
@@ -35,6 +36,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
     caixas,
     retiradas,
     entradas,
+    pagamentosReserva,
     vendasDinheiro,
     vendasPorForma,
     totalComandas,
@@ -44,6 +46,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
     fecharCaixa,
     adicionarRetirada,
     adicionarEntrada,
+    adicionarPagamentoReserva,
     fetchRetiradas,
   } = useGerenciamentoCaixa();
 
@@ -57,6 +60,10 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
   const [observacaoRetirada, setObservacaoRetirada] = useState('');
   const [valorEntrada, setValorEntrada] = useState('');
   const [observacaoEntrada, setObservacaoEntrada] = useState('');
+  const [valorReserva, setValorReserva] = useState('');
+  const [formaPagamentoReserva, setFormaPagamentoReserva] = useState<'dinheiro' | 'pix' | 'debito' | 'credito'>('dinheiro');
+  const [clienteNomeReserva, setClienteNomeReserva] = useState('');
+  const [observacaoReserva, setObservacaoReserva] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -153,6 +160,37 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
     }
   };
 
+  const handleAdicionarPagamentoReserva = async () => {
+    if (!selectedCaixa || !valorReserva || !clienteNomeReserva.trim()) return;
+
+    const valor = parseFloat(valorReserva);
+    if (isNaN(valor) || valor <= 0) {
+      alert('Valor inválido');
+      return;
+    }
+
+    if (clienteNomeReserva.trim().length < 3) {
+      alert('Nome do cliente deve ter no mínimo 3 caracteres');
+      return;
+    }
+
+    try {
+      await adicionarPagamentoReserva(
+        selectedCaixa.id,
+        valor,
+        formaPagamentoReserva,
+        clienteNomeReserva.trim(),
+        observacaoReserva.trim()
+      );
+      setValorReserva('');
+      setFormaPagamentoReserva('dinheiro');
+      setClienteNomeReserva('');
+      setObservacaoReserva('');
+    } catch (error) {
+      // Error handled in hook
+    }
+  };
+
   const handleFecharCaixa = async () => {
     if (!selectedCaixa) return;
 
@@ -174,7 +212,10 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
     if (!selectedCaixa) return 0;
     const totalRetiradas = retiradas.reduce((acc, r) => acc + r.valor, 0);
     const totalEntradas = entradas.reduce((acc, e) => acc + e.valor, 0);
-    return selectedCaixa.valor_abertura - totalRetiradas + totalEntradas + vendasDinheiro;
+    const totalReservasDinheiro = pagamentosReserva
+      .filter(p => p.forma_pagamento === 'dinheiro')
+      .reduce((acc, p) => acc + p.valor, 0);
+    return selectedCaixa.valor_abertura + vendasDinheiro + totalReservasDinheiro + totalEntradas - totalRetiradas;
   };
 
   const renderListView = () => (
@@ -333,21 +374,27 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
                     )})`}
                 </span>
               </div>
-              <div className="flex justify-between text-green-600">
+              <div className="flex justify-between text-sm">
                 <span>💵 Vendas (Dinheiro):</span>
-                <span className="font-semibold">
+                <span className="font-semibold text-green-600">
                   + R$ {vendasDinheiro.toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-between text-green-600">
+              <div className="flex justify-between text-sm">
+                <span>🎫 Reservas (Dinheiro):</span>
+                <span className="font-semibold text-indigo-600">
+                  + R$ {pagamentosReserva.filter(p => p.forma_pagamento === 'dinheiro').reduce((acc, p) => acc + p.valor, 0).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
                 <span>📥 Entradas:</span>
-                <span className="font-semibold">
+                <span className="font-semibold text-green-600">
                   + R$ {entradas.reduce((acc, e) => acc + e.valor, 0).toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-between text-red-600">
+              <div className="flex justify-between text-sm">
                 <span>💸 Retiradas:</span>
-                <span className="font-semibold">
+                <span className="font-semibold text-red-600">
                   - R$ {totalRetiradas.toFixed(2)}
                 </span>
               </div>
@@ -363,43 +410,134 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
           {/* Vendas por Forma de Pagamento */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">📊 Vendas Hoje (Todas as Formas)</CardTitle>
+              <CardTitle className="text-base">📊 Resumo de Recebimentos Hoje</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span>💵 Dinheiro:</span>
-                <span className="font-semibold text-green-600">
-                  R$ {(vendasPorForma.dinheiro || 0).toFixed(2)}
-                </span>
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase">Vendas (Comandas)</p>
+                <div className="flex justify-between text-sm">
+                  <span>💵 Dinheiro:</span>
+                  <span className="font-semibold text-green-600">
+                    R$ {(vendasPorForma.dinheiro || 0).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>📱 PIX:</span>
+                  <span className="font-semibold text-blue-600">
+                    R$ {(vendasPorForma.pix || 0).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>💳 Débito:</span>
+                  <span className="font-semibold text-purple-600">
+                    R$ {(vendasPorForma.debito || 0).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>💳 Crédito:</span>
+                  <span className="font-semibold text-orange-600">
+                    R$ {(vendasPorForma.credito || 0).toFixed(2)}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span>📱 PIX:</span>
-                <span className="font-semibold text-blue-600">
-                  R$ {(vendasPorForma.pix || 0).toFixed(2)}
-                </span>
+
+              <div className="border-t pt-2"></div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1">
+                  🎫 Reservas ({pagamentosReserva.length})
+                </p>
+                <div className="flex justify-between text-sm">
+                  <span>Total Reservas:</span>
+                  <span className="font-semibold text-indigo-600">
+                    R$ {pagamentosReserva.reduce((acc, p) => acc + p.valor, 0).toFixed(2)}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span>💳 Débito:</span>
-                <span className="font-semibold text-purple-600">
-                  R$ {(vendasPorForma.debito || 0).toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>💳 Crédito:</span>
-                <span className="font-semibold text-orange-600">
-                  R$ {(vendasPorForma.credito || 0).toFixed(2)}
-                </span>
-              </div>
+
               <div className="flex justify-between border-t pt-2">
-                <span className="font-bold">TOTAL:</span>
+                <span className="font-bold">TOTAL GERAL:</span>
                 <span className="font-bold text-green-600 text-lg">
                   R$ {totalVendas.toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-between pt-1 text-gray-600">
+              <div className="flex justify-between pt-1 text-gray-600 text-sm">
                 <span>🧾 Comandas processadas:</span>
                 <span className="font-semibold">{totalComandas}</span>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Pagamento de Reserva */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                🎫 Pagamento de Reserva
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="cliente-nome-reserva">Nome do Cliente *</Label>
+                <Input
+                  id="cliente-nome-reserva"
+                  type="text"
+                  value={clienteNomeReserva}
+                  onChange={(e) => setClienteNomeReserva(e.target.value)}
+                  placeholder="Nome completo do cliente"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="valor-reserva">Valor (R$) *</Label>
+                <Input
+                  id="valor-reserva"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={valorReserva}
+                  onChange={(e) => setValorReserva(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="forma-pagamento-reserva">Forma de Pagamento *</Label>
+                <Select
+                  value={formaPagamentoReserva}
+                  onValueChange={(value: 'dinheiro' | 'pix' | 'debito' | 'credito') => 
+                    setFormaPagamentoReserva(value)
+                  }
+                >
+                  <SelectTrigger id="forma-pagamento-reserva">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dinheiro">💵 Dinheiro</SelectItem>
+                    <SelectItem value="pix">📱 PIX</SelectItem>
+                    <SelectItem value="debito">💳 Débito</SelectItem>
+                    <SelectItem value="credito">🏦 Crédito</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="observacao-reserva">Observação</Label>
+                <Textarea
+                  id="observacao-reserva"
+                  value={observacaoReserva}
+                  onChange={(e) => setObservacaoReserva(e.target.value)}
+                  placeholder="Ex: Reserva mesa 5 - Aniversário"
+                  rows={2}
+                />
+              </div>
+              <Button
+                onClick={handleAdicionarPagamentoReserva}
+                className="w-full bg-indigo-600 hover:bg-indigo-700"
+                disabled={loading || !valorReserva || !clienteNomeReserva.trim()}
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  '🎫 Registrar Pagamento'
+                )}
+              </Button>
             </CardContent>
           </Card>
 
@@ -490,6 +628,67 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
                   'Adicionar Retirada'
                 )}
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Histórico de Pagamentos de Reserva */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">🎫 Histórico de Reservas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {pagamentosReserva.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhum pagamento de reserva registrado
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {pagamentosReserva.map((pagamento) => {
+                    const formaIcon = {
+                      dinheiro: '💵',
+                      pix: '📱',
+                      debito: '💳',
+                      credito: '🏦',
+                    }[pagamento.forma_pagamento];
+                    
+                    const formaColor = {
+                      dinheiro: 'text-green-600',
+                      pix: 'text-blue-600',
+                      debito: 'text-purple-600',
+                      credito: 'text-orange-600',
+                    }[pagamento.forma_pagamento];
+
+                    return (
+                      <div
+                        key={pagamento.id}
+                        className="border rounded-lg p-3 space-y-1 bg-indigo-50"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-indigo-900">
+                              👤 {pagamento.cliente_nome}
+                            </p>
+                            <p className={`text-sm font-semibold ${formaColor}`}>
+                              {formaIcon} R$ {pagamento.valor.toFixed(2)}
+                            </p>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {format(
+                              new Date(pagamento.data_pagamento),
+                              'dd/MM/yyyy HH:mm'
+                            )}
+                          </span>
+                        </div>
+                        {pagamento.observacao && (
+                          <p className="text-xs text-muted-foreground">
+                            "{pagamento.observacao}"
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 
