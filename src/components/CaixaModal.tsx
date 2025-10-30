@@ -523,7 +523,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
                   id="observacao-reserva"
                   value={observacaoReserva}
                   onChange={(e) => setObservacaoReserva(e.target.value)}
-                  placeholder="Ex: Reserva mesa 5 - Aniversário"
+                  placeholder=""
                   rows={2}
                 />
               </div>
