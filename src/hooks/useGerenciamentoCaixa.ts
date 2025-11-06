@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Caixa, CaixaRetirada, CaixaEntrada, CaixaPagamentoReserva } from '@/types/types';
+import { Caixa, CaixaRetirada, CaixaEntrada, CaixaPagamentoReserva, DadosFechamentoCaixa } from '@/types/types';
 import { toast } from '@/hooks/use-toast';
 
 export const useGerenciamentoCaixa = () => {
@@ -100,6 +100,179 @@ export const useGerenciamentoCaixa = () => {
     } catch (error: any) {
       toast({
         title: 'Erro ao abrir caixa',
+        description: error.message,
+        variant: 'destructive',
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Buscar dados completos do caixa para PDF
+  const buscarDadosCompletosCaixa = async (caixaId: number): Promise<DadosFechamentoCaixa> => {
+    try {
+      // 1. Buscar registro do caixa
+      const { data: caixaData, error: caixaError } = await supabase
+        .from('caixas')
+        .select('*')
+        .eq('id', caixaId)
+        .single();
+
+      if (caixaError) throw caixaError;
+
+      // 2. Buscar todas as comandas pagas neste caixa (com itens)
+      const { data: comandasData, error: comandasError } = await supabase
+        .from('comandas')
+        .select(`
+          *,
+          comanda_itens (*)
+        `)
+        .eq('caixa_id', caixaId)
+        .eq('status', 'paga');
+
+      if (comandasError) throw comandasError;
+
+      // 3. Buscar retiradas, entradas, pagamentos de reserva
+      const { data: retiradasData, error: retiradasError } = await supabase
+        .from('caixa_retiradas')
+        .select('*')
+        .eq('caixa_id', caixaId);
+
+      if (retiradasError) throw retiradasError;
+
+      const { data: entradasData, error: entradasError } = await supabase
+        .from('caixa_entradas')
+        .select('*')
+        .eq('caixa_id', caixaId);
+
+      if (entradasError) throw entradasError;
+
+      const { data: reservasData, error: reservasError } = await supabase
+        .from('caixa_pagamentos_reserva')
+        .select('*')
+        .eq('caixa_id', caixaId);
+
+      if (reservasError) throw reservasError;
+
+      // 4. Calcular vendas por forma de pagamento
+      const vendas: Record<string, number> = {
+        dinheiro: 0,
+        pix: 0,
+        debito: 0,
+        credito: 0,
+      };
+
+      comandasData?.forEach((comanda) => {
+        if (comanda.forma_pagamento !== 'multiplo') {
+          vendas[comanda.forma_pagamento] += comanda.total || 0;
+        } else if (comanda.forma_pagamento === 'multiplo' && comanda.pagamentos_divididos) {
+          comanda.pagamentos_divididos.forEach((pagamento: any) => {
+            if (vendas[pagamento.forma_pagamento] !== undefined) {
+              vendas[pagamento.forma_pagamento] += pagamento.valor;
+            }
+          });
+        }
+      });
+
+      // Adicionar pagamentos de reserva
+      reservasData?.forEach((reserva) => {
+        if (vendas[reserva.forma_pagamento] !== undefined) {
+          vendas[reserva.forma_pagamento] += reserva.valor;
+        }
+      });
+
+      // 5. Calcular saldo final
+      const totalVendasDinheiro = vendas.dinheiro;
+      const totalRetiradas = retiradasData?.reduce((acc, r) => acc + r.valor, 0) || 0;
+      const totalEntradas = entradasData?.reduce((acc, e) => acc + e.valor, 0) || 0;
+      const totalReservasDinheiro = reservasData?.filter(p => p.forma_pagamento === 'dinheiro').reduce((acc, p) => acc + p.valor, 0) || 0;
+      const saldoFinal = caixaData.valor_abertura + totalVendasDinheiro + totalReservasDinheiro + totalEntradas - totalRetiradas;
+
+      return {
+        caixa: caixaData,
+        retiradas: retiradasData || [],
+        entradas: entradasData || [],
+        pagamentosReserva: reservasData || [],
+        comandas: comandasData || [],
+        vendasPorForma: vendas,
+        totalComandas: comandasData?.length || 0,
+        saldoFinal,
+      };
+    } catch (error: any) {
+      console.error('Erro ao buscar dados do caixa:', error);
+      throw error;
+    }
+  };
+
+  // Deletar dados do caixa
+  const deletarDadosCaixa = async (caixaId: number) => {
+    try {
+      setLoading(true);
+
+      // 1. Buscar IDs das comandas vinculadas ao caixa
+      const { data: comandas, error: fetchError } = await supabase
+        .from('comandas')
+        .select('id')
+        .eq('caixa_id', caixaId);
+
+      if (fetchError) throw fetchError;
+
+      const comandaIds = comandas?.map(c => c.id) || [];
+
+      // 2. Deletar itens das comandas
+      if (comandaIds.length > 0) {
+        const { error: deleteItensError } = await supabase
+          .from('comanda_itens')
+          .delete()
+          .in('comanda_id', comandaIds);
+
+        if (deleteItensError) throw deleteItensError;
+
+        // 3. Deletar comandas
+        const { error: deleteComandasError } = await supabase
+          .from('comandas')
+          .delete()
+          .in('id', comandaIds);
+
+        if (deleteComandasError) throw deleteComandasError;
+      }
+
+      // 4. Deletar retiradas
+      const { error: deleteRetiradasError } = await supabase
+        .from('caixa_retiradas')
+        .delete()
+        .eq('caixa_id', caixaId);
+
+      if (deleteRetiradasError) throw deleteRetiradasError;
+
+      // 5. Deletar entradas
+      const { error: deleteEntradasError } = await supabase
+        .from('caixa_entradas')
+        .delete()
+        .eq('caixa_id', caixaId);
+
+      if (deleteEntradasError) throw deleteEntradasError;
+
+      // 6. Deletar pagamentos de reserva
+      const { error: deleteReservasError } = await supabase
+        .from('caixa_pagamentos_reserva')
+        .delete()
+        .eq('caixa_id', caixaId);
+
+      if (deleteReservasError) throw deleteReservasError;
+
+      console.log(`✅ Dados do caixa ${caixaId} deletados com sucesso`);
+      
+      toast({
+        title: 'Dados limpos',
+        description: 'Todos os dados do caixa foram removidos',
+      });
+
+    } catch (error: any) {
+      console.error('❌ Erro ao deletar dados do caixa:', error);
+      toast({
+        title: 'Erro ao limpar dados',
         description: error.message,
         variant: 'destructive',
       });
@@ -434,5 +607,7 @@ export const useGerenciamentoCaixa = () => {
     adicionarEntrada,
     adicionarPagamentoReserva,
     fetchRetiradas,
+    buscarDadosCompletosCaixa,
+    deletarDadosCaixa,
   };
 };

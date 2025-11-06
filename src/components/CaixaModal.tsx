@@ -5,6 +5,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +33,8 @@ import {
   Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { generatePDFFechamentoCaixa } from '@/utils/pdfGeneratorCaixa';
+import { toast } from '@/hooks/use-toast';
 
 interface CaixaModalProps {
   open: boolean;
@@ -48,10 +60,13 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
     adicionarEntrada,
     adicionarPagamentoReserva,
     fetchRetiradas,
+    buscarDadosCompletosCaixa,
+    deletarDadosCaixa,
   } = useGerenciamentoCaixa();
 
   const [view, setView] = useState<ViewType>('list');
   const [selectedCaixa, setSelectedCaixa] = useState<Caixa | null>(null);
+  const [showFechamentoDialog, setShowFechamentoDialog] = useState(false);
   
   // Form states
   const [nomeOperador, setNomeOperador] = useState('');
@@ -193,18 +208,54 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
 
   const handleFecharCaixa = async () => {
     if (!selectedCaixa) return;
+    setShowFechamentoDialog(true);
+  };
 
-    const confirmar = window.confirm(
-      `Tem certeza que deseja fechar o Caixa ${selectedCaixa.numero_caixa}?`
-    );
+  const handleConfirmarFechamento = async () => {
+    if (!selectedCaixa) return;
+    
+    try {
+      setShowFechamentoDialog(false);
 
-    if (confirmar) {
-      try {
-        await fecharCaixa(selectedCaixa.id);
-        setView('list');
-      } catch (error) {
-        // Error handled in hook
-      }
+      // 1. Buscar dados completos do caixa
+      toast({
+        title: 'Preparando fechamento...',
+        description: 'Gerando relatório em PDF',
+      });
+
+      const dadosCompletos = await buscarDadosCompletosCaixa(selectedCaixa.id);
+
+      // 2. Gerar PDF de fechamento
+      await generatePDFFechamentoCaixa(dadosCompletos);
+      
+      toast({
+        title: '📄 PDF gerado',
+        description: 'Aguarde a limpeza dos dados...',
+      });
+
+      // 3. Aguardar 2 segundos para garantir que o download começou
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // 4. Fechar o caixa (atualizar status)
+      await fecharCaixa(selectedCaixa.id);
+
+      // 5. Deletar dados do banco
+      await deletarDadosCaixa(selectedCaixa.id);
+
+      toast({
+        title: '✅ Caixa fechado',
+        description: 'Dados limpos e relatório gerado',
+      });
+
+      // 6. Voltar para lista
+      setView('list');
+      
+    } catch (error: any) {
+      toast({
+        title: '❌ Erro no fechamento',
+        description: error.message,
+        variant: 'destructive',
+      });
     }
   };
 
@@ -791,12 +842,44 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        {view === 'list' && renderListView()}
-        {view === 'open' && renderOpenView()}
-        {view === 'details' && renderDetailsView()}
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          {view === 'list' && renderListView()}
+          {view === 'open' && renderOpenView()}
+          {view === 'details' && renderDetailsView()}
+        </DialogContent>
+      </Dialog>
+
+      {/* AlertDialog de Fechamento */}
+      <AlertDialog open={showFechamentoDialog} onOpenChange={setShowFechamentoDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              📄 Fechamento de Caixa
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p className="text-base">
+                Será realizado um <strong>download do relatório de fechamento</strong> para armazenar no seu PC.
+              </p>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-sm text-yellow-800 font-semibold">
+                  ⚠️ Atenção: Após o download, todos os dados deste caixa serão <strong>deletados permanentemente</strong> do sistema.
+                </p>
+              </div>
+              <p className="text-sm text-gray-600">
+                Certifique-se de salvar o PDF em um local seguro para consultas futuras.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmarFechamento}>
+              OK, Fechar e Baixar PDF
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };

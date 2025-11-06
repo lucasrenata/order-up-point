@@ -115,3 +115,14 @@ export interface CaixaPagamentoReserva {
 export interface CaixaComRetiradas extends Caixa {
   caixa_retiradas: CaixaRetirada[];
 }
+
+export interface DadosFechamentoCaixa {
+  caixa: Caixa;
+  retiradas: CaixaRetirada[];
+  entradas: CaixaEntrada[];
+  pagamentosReserva: CaixaPagamentoReserva[];
+  comandas: Comanda[];
+  vendasPorForma: Record<string, number>;
+  totalComandas: number;
+  saldoFinal: number;
+}
