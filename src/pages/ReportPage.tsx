@@ -87,7 +87,7 @@ export default function ReportPage() {
         ) : reportData ? (
           <div id="report-content">
             <ReportSummary data={reportData} selectedDate={selectedDate} />
-            <ReportTable data={reportData} />
+            <ReportTable data={reportData} onDataChange={refetch} />
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow-sm p-6 sm:p-8 text-center">

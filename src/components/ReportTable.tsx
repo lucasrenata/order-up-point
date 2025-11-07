@@ -1,16 +1,38 @@
-
-import React from 'react';
-import { Clock, User, Receipt } from 'lucide-react';
+import React, { useState } from 'react';
+import { Clock, User, Receipt, Edit, Trash2 } from 'lucide-react';
 import { formatBrazilianDateTimeDirect } from '../utils/dateUtils';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
+import { Comanda } from '@/types/types';
+import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { AdminAuthModal } from './AdminAuthModal';
+import { EditComandaModal } from './EditComandaModal';
 
 interface ReportTableProps {
   data: {
     comandas: any[];
     produtos: any[];
   };
+  onDataChange?: () => void;
 }
 
-export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
+export const ReportTable: React.FC<ReportTableProps> = ({ data, onDataChange }) => {
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
+  const [selectedComanda, setSelectedComanda] = useState<Comanda | null>(null);
+  const [actionType, setActionType] = useState<'edit' | 'delete'>('edit');
+  const [isDeleting, setIsDeleting] = useState(false);
   const getProductName = (produtoId: number | null) => {
     if (!produtoId) return 'Prato por Quilo';
     const produto = data.produtos.find(p => p.id === produtoId);
@@ -63,8 +85,108 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
     }
   };
 
+  const handleEditClick = (comanda: Comanda) => {
+    setSelectedComanda(comanda);
+    setActionType('edit');
+    setAuthModalOpen(true);
+  };
+
+  const handleDeleteClick = (comanda: Comanda) => {
+    setSelectedComanda(comanda);
+    setActionType('delete');
+    setAuthModalOpen(true);
+  };
+
+  const handleAuthSuccess = () => {
+    setAuthModalOpen(false);
+    if (actionType === 'edit') {
+      setEditModalOpen(true);
+    } else {
+      setDeleteAlertOpen(true);
+    }
+  };
+
+  const handleDeleteComanda = async () => {
+    if (!selectedComanda) return;
+
+    setIsDeleting(true);
+    try {
+      // Deletar itens da comanda primeiro
+      const { error: itemsError } = await supabase
+        .from('comanda_itens')
+        .delete()
+        .eq('comanda_id', selectedComanda.id);
+
+      if (itemsError) throw itemsError;
+
+      // Deletar comanda
+      const { error: comandaError } = await supabase
+        .from('comandas')
+        .delete()
+        .eq('id', selectedComanda.id);
+
+      if (comandaError) throw comandaError;
+
+      toast.success('Comanda cancelada com sucesso');
+      setDeleteAlertOpen(false);
+      setSelectedComanda(null);
+      onDataChange?.();
+    } catch (error: any) {
+      console.error('Erro ao deletar comanda:', error);
+      toast.error('Erro ao cancelar comanda: ' + error.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleEditSuccess = () => {
+    setEditModalOpen(false);
+    setSelectedComanda(null);
+    onDataChange?.();
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    <>
+      <AdminAuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onSuccess={handleAuthSuccess}
+        action={actionType}
+      />
+
+      {selectedComanda && (
+        <EditComandaModal
+          comanda={selectedComanda}
+          produtos={data.produtos}
+          isOpen={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          onSuccess={handleEditSuccess}
+        />
+      )}
+
+      <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Cancelamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja cancelar a comanda #{selectedComanda?.identificador_cliente}?
+              Esta ação não pode ser desfeita e removerá todos os dados da comanda.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Não, manter</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteComanda}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Cancelando...' : 'Sim, cancelar comanda'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
       <div className="p-4 sm:p-6 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
           <Receipt className="text-blue-600" size={20} />
@@ -97,6 +219,9 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
               </th>
               <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Total
+              </th>
+              <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Ações
               </th>
             </tr>
           </thead>
@@ -176,6 +301,28 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
                     currency: 'BRL' 
                   })}
                 </td>
+                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditClick(comanda)}
+                      className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                      title="Editar comanda"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteClick(comanda)}
+                      className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                      title="Cancelar comanda"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -192,5 +339,6 @@ export const ReportTable: React.FC<ReportTableProps> = ({ data }) => {
         </div>
       )}
     </div>
+    </>
   );
 };
