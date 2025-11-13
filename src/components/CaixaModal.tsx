@@ -135,8 +135,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
       return;
     }
 
-    const totalRetiradas = retiradas.reduce((acc, r) => acc + r.valor, 0);
-    const saldoAtual = selectedCaixa.valor_abertura - totalRetiradas;
+    const saldoAtual = calcularSaldo();
 
     if (valor > saldoAtual) {
       alert('Valor de retirada maior que o saldo disponível');
