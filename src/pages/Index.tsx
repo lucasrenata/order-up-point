@@ -51,15 +51,7 @@ export default function Index() {
       .from('comandas')
       .select(`
         *,
-        comanda_itens (
-          id,
-          created_at,
-          comanda_id,
-          produto_id,
-          quantidade,
-          preco_unitario,
-          descricao
-        )
+        comanda_itens (*)
       `)
       .eq('id', comandaId)
       .single();
@@ -70,14 +62,33 @@ export default function Index() {
       return;
     }
     
-    // Enriquecer os itens com dados dos produtos
+    console.log('🔍 Reload - Resposta completa:', data);
+    console.log('📦 Reload - Itens da relação:', data?.comanda_itens);
+    
+    let itens = data?.comanda_itens || [];
+    
+    // Fallback: se itens vieram vazios, buscar separadamente
+    if (itens.length === 0) {
+      console.log('⚠️ Itens vazios na relação, buscando separadamente...');
+      const { data: itensSeparados, error: itensError } = await supabase
+        .from('comanda_itens')
+        .select('*')
+        .eq('comanda_id', comandaId);
+      
+      console.log('📦 Itens buscados separadamente:', itensSeparados, 'Erro:', itensError);
+      
+      if (!itensError && itensSeparados) {
+        itens = itensSeparados;
+      }
+    }
+    
     const enrichedComanda = {
       ...data,
-      comanda_itens: data.comanda_itens || []
+      comanda_itens: itens
     };
     
     setActiveComanda(enrichedComanda);
-    console.log('Comanda recarregada:', enrichedComanda);
+    console.log('✅ Comanda recarregada:', enrichedComanda);
   };
 
   const handleAddItem = async (itemData: Omit<ComandaItem, 'id' | 'created_at'>) => {
@@ -284,19 +295,14 @@ export default function Index() {
         .from('comandas')
         .select(`
           *,
-          comanda_itens (
-            id,
-            created_at,
-            comanda_id,
-            produto_id,
-            quantidade,
-            preco_unitario,
-            descricao
-          )
+          comanda_itens (*)
         `)
         .eq('identificador_cliente', comandaId)
         .eq('status', 'aberta')
         .maybeSingle();
+
+      console.log('🔍 Busca comanda - Resposta:', comanda);
+      console.log('📦 Busca comanda - Itens da relação:', comanda?.comanda_itens);
 
       if (error) {
         console.error('Erro ao buscar comanda:', error);
@@ -317,15 +323,7 @@ export default function Index() {
           })
           .select(`
             *,
-            comanda_itens (
-              id,
-              created_at,
-              comanda_id,
-              produto_id,
-              quantidade,
-              preco_unitario,
-              descricao
-            )
+            comanda_itens (*)
           `)
           .single();
         
@@ -342,14 +340,31 @@ export default function Index() {
         };
         showNotification(`Nova comanda #${comandaId} criada!`, 'success');
       } else {
+        let itens = comanda.comanda_itens || [];
+        
+        // Fallback: se itens vieram vazios, buscar separadamente
+        if (itens.length === 0) {
+          console.log('⚠️ Itens vazios na relação, buscando separadamente...');
+          const { data: itensSeparados, error: itensError } = await supabase
+            .from('comanda_itens')
+            .select('*')
+            .eq('comanda_id', comanda.id);
+          
+          console.log('📦 Itens buscados separadamente:', itensSeparados, 'Erro:', itensError);
+          
+          if (!itensError && itensSeparados) {
+            itens = itensSeparados;
+          }
+        }
+        
         comanda = {
           ...comanda,
-          comanda_itens: comanda.comanda_itens || []
+          comanda_itens: itens
         };
-        showNotification(`Comanda #${comandaId} carregada!`, 'info');
+        showNotification(`Comanda #${comandaId} carregada com ${itens.length} item(s)!`, 'info');
       }
 
-      console.log('Comanda ativa:', comanda);
+      console.log('✅ Comanda ativa:', comanda);
       setActiveComanda(comanda);
       setComandaCodeInput('');
       setIsLoading(false);
