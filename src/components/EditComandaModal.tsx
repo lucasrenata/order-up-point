@@ -13,7 +13,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface EditComandaModalProps {
   comanda: Comanda;
@@ -33,6 +39,7 @@ export const EditComandaModal: React.FC<EditComandaModalProps> = ({
   const [items, setItems] = useState<ComandaItem[]>([]);
   const [desconto, setDesconto] = useState(0);
   const [motivoDesconto, setMotivoDesconto] = useState('');
+  const [formaPagamento, setFormaPagamento] = useState<'dinheiro' | 'pix' | 'debito' | 'credito' | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -40,6 +47,7 @@ export const EditComandaModal: React.FC<EditComandaModalProps> = ({
       setItems(comanda.comanda_itens || []);
       setDesconto(comanda.desconto || 0);
       setMotivoDesconto(comanda.motivo_desconto || '');
+      setFormaPagamento(comanda.forma_pagamento === 'multiplo' ? null : comanda.forma_pagamento || null);
     }
   }, [comanda]);
 
@@ -74,6 +82,7 @@ export const EditComandaModal: React.FC<EditComandaModalProps> = ({
           desconto,
           motivo_desconto: motivoDesconto,
           total: newTotal,
+          forma_pagamento: formaPagamento,
         })
         .eq('id', comanda.id);
 
@@ -176,7 +185,25 @@ export const EditComandaModal: React.FC<EditComandaModalProps> = ({
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+          <div className="space-y-2 pt-4 border-t">
+            <Label>Forma de Pagamento</Label>
+            <Select
+              value={formaPagamento || ''}
+              onValueChange={(value) => setFormaPagamento(value as 'dinheiro' | 'pix' | 'debito' | 'credito')}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecione a forma de pagamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="dinheiro">💵 Dinheiro</SelectItem>
+                <SelectItem value="pix">📱 Pix</SelectItem>
+                <SelectItem value="debito">💳 Cartão Débito</SelectItem>
+                <SelectItem value="credito">🏦 Cartão Crédito</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 pt-4">
             <div className="space-y-2">
               <Label htmlFor="desconto">Desconto (R$)</Label>
               <Input
