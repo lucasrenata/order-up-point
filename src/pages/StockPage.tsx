@@ -140,19 +140,53 @@ export default function StockPage() {
   };
 
   const handleSaveProduct = async (productData: Partial<Product>) => {
+    console.log('ProductForm submit called');
+    console.log('📦 Dados do produto para salvar:', productData);
+    console.log('✏️ Produto sendo editado:', editingProduct);
+
+    // Sanitizar dados - barcode vazio deve ser null para evitar duplicados
+    const sanitizedData = {
+      nome: productData.nome?.trim() || '',
+      preco: Number(productData.preco) || 0,
+      categoria: productData.categoria || '',
+      barcode: productData.barcode?.trim() || null, // NULL se vazio para evitar constraint unique
+      img: productData.img || '📦',
+      estoque_atual: Number(productData.estoque_atual) || 0,
+      estoque_minimo: Number(productData.estoque_minimo) || 5,
+      estoque_maximo: Number(productData.estoque_maximo) || 100,
+      unidade_medida: productData.unidade_medida || 'unidade',
+      fornecedor: productData.fornecedor?.trim() || null,
+      descricao: productData.descricao?.trim() || null,
+      ativo: productData.ativo ?? true,
+      atalho_rapido: productData.atalho_rapido ?? false
+    };
+
+    console.log('🧹 Dados sanitizados:', sanitizedData);
+
     try {
       if (editingProduct) {
         const previousStock = editingProduct.estoque_atual ?? 0;
-        const newStock = typeof productData.estoque_atual === 'number' ? productData.estoque_atual : previousStock;
+        const newStock = sanitizedData.estoque_atual;
         
         console.log(`Atualização de estoque - Anterior: ${previousStock}, Novo: ${newStock}`);
 
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('produtos')
-          .update(productData)
-          .eq('id', editingProduct.id);
+          .update(sanitizedData)
+          .eq('id', editingProduct.id)
+          .select();
 
-        if (error) throw error;
+        console.log('📤 Resposta do update:', { data, error });
+
+        if (error) {
+          console.error('❌ Erro detalhado:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          });
+          throw error;
+        }
         
         // Se houve reposição de estoque (aumento), limpar movimentações
         if (newStock > previousStock) {
@@ -162,20 +196,38 @@ export default function StockPage() {
         
         toast.success('Produto atualizado com sucesso!');
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('produtos')
-          .insert(productData);
+          .insert(sanitizedData)
+          .select();
 
-        if (error) throw error;
+        console.log('📤 Resposta do insert:', { data, error });
+
+        if (error) {
+          console.error('❌ Erro detalhado:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          });
+          throw error;
+        }
         toast.success('Produto cadastrado com sucesso!');
       }
 
       setIsProductFormOpen(false);
       setEditingProduct(null);
       fetchProducts();
-    } catch (error) {
-      toast.error('Erro ao salvar produto');
-      console.error(error);
+    } catch (error: any) {
+      const errorMessage = error.message || 'Erro desconhecido';
+      console.error('❌ Erro ao salvar:', error);
+      
+      // Mensagens amigáveis para erros comuns
+      if (error.code === '23505' && errorMessage.includes('barcode')) {
+        toast.error('Código de barras já existe em outro produto');
+      } else {
+        toast.error(`Erro ao salvar produto: ${errorMessage}`);
+      }
     }
   };
 
