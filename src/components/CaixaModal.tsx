@@ -238,12 +238,12 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
       // 4. Fechar o caixa (atualizar status)
       await fecharCaixa(selectedCaixa.id);
 
-      // 5. Deletar dados do banco
-      await deletarDadosCaixa(selectedCaixa.id);
+      // NOTA: Dados NÃO são mais deletados automaticamente
+      // Os dados persistem por 7 dias e podem ser deletados manualmente na aba Movimentações
 
       toast({
         title: '✅ Caixa fechado',
-        description: 'Dados limpos e relatório gerado',
+        description: 'Relatório gerado com sucesso. Dados salvos.',
       });
 
       // 6. Voltar para lista
