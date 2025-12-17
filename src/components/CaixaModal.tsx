@@ -863,13 +863,13 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
               <p className="text-base">
                 Será realizado um <strong>download do relatório de fechamento</strong> para armazenar no seu PC.
               </p>
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <p className="text-sm text-yellow-800 font-semibold">
-                  ⚠️ Atenção: Após o download, todos os dados deste caixa serão <strong>deletados permanentemente</strong> do sistema.
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  ℹ️ <strong>Informação:</strong> Os dados deste caixa serão <strong>mantidos por 7 dias</strong> e podem ser consultados na aba "Movimentações" do relatório.
                 </p>
               </div>
-              <p className="text-sm text-gray-600">
-                Certifique-se de salvar o PDF em um local seguro para consultas futuras.
+              <p className="text-sm text-muted-foreground">
+                Após 7 dias, você será notificado para deletar os dados antigos manualmente.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
