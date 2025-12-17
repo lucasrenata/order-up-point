@@ -229,21 +229,23 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
       
       toast({
         title: '📄 PDF gerado',
-        description: 'Aguarde a limpeza dos dados...',
+        description: 'Salvando dados...',
       });
 
       // 3. Aguardar 2 segundos para garantir que o download começou
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // 4. Fechar o caixa (atualizar status)
+      console.log('🔒 Fechando caixa SEM deletar dados - ID:', selectedCaixa.id);
       await fecharCaixa(selectedCaixa.id);
+      console.log('✅ Caixa fechado - Dados persistirão por 7 dias na aba Movimentações');
 
       // NOTA: Dados NÃO são mais deletados automaticamente
       // Os dados persistem por 7 dias e podem ser deletados manualmente na aba Movimentações
 
       toast({
         title: '✅ Caixa fechado',
-        description: 'Relatório gerado com sucesso. Dados salvos.',
+        description: 'Relatório gerado. Dados salvos por 7 dias.',
       });
 
       // 6. Voltar para lista
