@@ -108,20 +108,20 @@ export const useReportData = (selectedDate: string) => {
       
       const ticketMedio = comandas?.length ? totalVendas / comandas.length : 0;
 
-      // Contar quantos ITENS (refeições) de "Prato por Quilo" foram vendidos
+      // Contar QUANTIDADE total de "Prato por Quilo" vendidos (soma das quantidades)
       const pratoPorQuilo = comandas?.reduce((total, comanda) => {
         const pratosQuilo = comanda.comanda_itens?.filter(item => 
           item.tipo_item === 'prato_por_quilo' || (item.tipo_item === undefined && item.produto_id === null && item.descricao === 'Prato por Quilo')
         ) || [];
-        return total + pratosQuilo.length;
+        return total + pratosQuilo.reduce((sum, item) => sum + (item.quantidade || 1), 0);
       }, 0) || 0;
 
-      // Contar quantos ITENS de "Marmitex" foram vendidos
+      // Contar QUANTIDADE total de "Marmitex" vendidos (soma das quantidades)
       const totalMarmitex = comandas?.reduce((total, comanda) => {
         const marmitex = comanda.comanda_itens?.filter(item => 
           item.tipo_item === 'marmitex' || (item.tipo_item === undefined && item.produto_id === null && item.descricao === 'Marmitex')
         ) || [];
-        return total + marmitex.length;
+        return total + marmitex.reduce((sum, item) => sum + (item.quantidade || 1), 0);
       }, 0) || 0;
 
       console.log('📈 ===== ESTATÍSTICAS FINAIS =====');
