@@ -191,15 +191,28 @@ export const formatBrazilianDateTimeDirect = (dateString: string): string => {
 };
 
 /**
- * Range simplificado para dados já em UTC-3
+ * Range para um dia brasileiro completo (00:00 a 23:59 horário Brasil)
+ * Converte corretamente para UTC considerando UTC-3
  */
 export const getBrazilianDateRangeSimple = (brazilianDate: string) => {
-  console.log(`🔍 Range simples para data brasileira: ${brazilianDate}`);
+  console.log(`🔍 Calculando range UTC para dia brasileiro: ${brazilianDate}`);
   
-  const start = `${brazilianDate}T00:00:00.000Z`;
-  const end = `${brazilianDate}T23:59:59.999Z`;
+  // Brasil está em UTC-3, então:
+  // 00:00 Brasil = 03:00 UTC (mesmo dia)
+  // 23:59:59 Brasil = 02:59:59 UTC (dia seguinte)
   
-  console.log(`🌍 Range UTC direto: ${start} até ${end}`);
+  // Criar data do dia seguinte para o fim do range
+  const [year, month, day] = brazilianDate.split('-').map(Number);
+  const nextDay = new Date(Date.UTC(year, month - 1, day + 1));
+  const nextDayStr = nextDay.toISOString().split('T')[0];
+  
+  // Início: 00:00 Brasil = 03:00 UTC do mesmo dia
+  const start = `${brazilianDate}T03:00:00.000Z`;
+  // Fim: 23:59:59.999 Brasil = 02:59:59.999 UTC do dia seguinte
+  const end = `${nextDayStr}T02:59:59.999Z`;
+  
+  console.log(`🇧🇷 Dia brasileiro: ${brazilianDate} (00:00 às 23:59 horário Brasil)`);
+  console.log(`🌍 Range UTC: ${start} até ${end}`);
   
   return { start, end };
 };
