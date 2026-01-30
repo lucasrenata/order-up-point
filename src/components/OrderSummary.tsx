@@ -80,16 +80,27 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
 
         <div className="flex-grow overflow-y-auto px-2 sm:px-4 py-2">
-          {multiComandas.map((cmd) => {
+          {multiComandas.map((cmd, index) => {
             const cmdTotal = cmd.comanda_itens.reduce(
               (sum, item) => sum + parseFloat(item.preco_unitario.toString()) * item.quantidade,
               0
             );
             
             return (
-              <div key={cmd.id} className="mb-4 border-2 border-orange-200 rounded-lg p-3 bg-orange-50">
+              <div key={cmd.id} className={`mb-4 border-2 rounded-lg p-3 ${
+                index === 0 
+                  ? 'border-green-400 bg-green-50 ring-2 ring-green-300' 
+                  : 'border-orange-200 bg-orange-50'
+              }`}>
                 <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-bold text-gray-800">Comanda #{cmd.identificador_cliente}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-gray-800">Comanda #{cmd.identificador_cliente}</h3>
+                    {index === 0 && (
+                      <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
+                        Recebe novos itens
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-green-600">
                       {cmdTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -103,14 +114,20 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                   </div>
                 </div>
                 <div className="space-y-1">
-                  {cmd.comanda_itens.map(item => (
-                    <div key={item.id} className="flex justify-between text-sm text-gray-700 bg-white p-2 rounded">
-                      <span>{item.quantidade}x {item.descricao}</span>
-                      <span className="font-medium">
-                        {(parseFloat(item.preco_unitario.toString()) * item.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </span>
+                  {cmd.comanda_itens.length === 0 ? (
+                    <div className="text-sm text-gray-500 italic bg-white p-2 rounded text-center">
+                      Comanda vazia (será marcada como paga)
                     </div>
-                  ))}
+                  ) : (
+                    cmd.comanda_itens.map(item => (
+                      <div key={item.id} className="flex justify-between text-sm text-gray-700 bg-white p-2 rounded">
+                        <span>{item.quantidade}x {item.descricao}</span>
+                        <span className="font-medium">
+                          {(parseFloat(item.preco_unitario.toString()) * item.quantidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             );

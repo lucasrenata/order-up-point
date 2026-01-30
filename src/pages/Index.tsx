@@ -91,7 +91,80 @@ export default function Index() {
     console.log('✅ Comanda recarregada:', enrichedComanda);
   };
 
+  // Função para recarregar uma comanda específica da seleção múltipla
+  const reloadComandaInSelection = async (comandaId: number) => {
+    const { data, error } = await supabase
+      .from('comandas')
+      .select(`
+        *,
+        comanda_itens (*)
+      `)
+      .eq('id', comandaId)
+      .single();
+    
+    if (error) {
+      console.error('Erro ao recarregar comanda da seleção:', error);
+      return null;
+    }
+    
+    let itens = data?.comanda_itens || [];
+    
+    if (itens.length === 0) {
+      const { data: itensSeparados } = await supabase
+        .from('comanda_itens')
+        .select('*')
+        .eq('comanda_id', comandaId);
+      
+      if (itensSeparados) {
+        itens = itensSeparados;
+      }
+    }
+    
+    return {
+      ...data,
+      comanda_itens: itens
+    };
+  };
+
   const handleAddItem = async (itemData: Omit<ComandaItem, 'id' | 'created_at'>) => {
+    // No modo múltiplo, adiciona à primeira comanda da seleção
+    if (isMultiComandaMode && selectedComandas.length > 0) {
+      const primeiraComanda = selectedComandas[0];
+      
+      console.log('📦 Modo múltiplo: Inserindo item na primeira comanda:', primeiraComanda.identificador_cliente);
+      
+      const { data, error } = await supabase
+        .from('comanda_itens')
+        .insert({
+          comanda_id: primeiraComanda.id,
+          produto_id: itemData.produto_id,
+          quantidade: itemData.quantidade,
+          preco_unitario: itemData.preco_unitario,
+          descricao: itemData.descricao,
+          tipo_item: itemData.tipo_item
+        })
+        .select();
+      
+      if (error) {
+        console.error('Erro ao adicionar item:', error);
+        showNotification('Erro ao adicionar item.', 'error');
+      } else {
+        console.log('Item adicionado com sucesso na primeira comanda:', data);
+        
+        // Recarregar a primeira comanda e atualizar a seleção
+        const comandaAtualizada = await reloadComandaInSelection(primeiraComanda.id);
+        if (comandaAtualizada) {
+          setSelectedComandas(prev => 
+            prev.map(c => c.id === primeiraComanda.id ? comandaAtualizada : c)
+          );
+        }
+        
+        showNotification(`Item adicionado à comanda #${primeiraComanda.identificador_cliente}!`, 'success');
+      }
+      return;
+    }
+    
+    // Modo normal: precisa de comanda ativa
     if (!activeComanda) return;
     
     console.log('Inserindo item:', itemData);
@@ -118,45 +191,70 @@ export default function Index() {
   };
 
   const handleAddProduto = async (produto: Product) => {
-    if (!activeComanda) return;
+    // No modo múltiplo, permite adicionar se tiver comandas selecionadas
+    const targetComandaId = isMultiComandaMode 
+      ? (selectedComandas.length > 0 ? selectedComandas[0].id : null)
+      : activeComanda?.id;
+    
+    if (!targetComandaId) {
+      if (isMultiComandaMode) {
+        showNotification('Adicione pelo menos uma comanda primeiro!', 'error');
+      }
+      return;
+    }
     
     await handleAddItem({
-      comanda_id: activeComanda.id,
+      comanda_id: targetComandaId,
       produto_id: produto.id,
       quantidade: 1,
       preco_unitario: produto.preco,
       descricao: produto.nome,
       tipo_item: 'produto'
     });
-    showNotification(`${produto.nome} adicionado!`, 'success');
   };
 
   const handleAddPratoPorPeso = async (valor: number) => {
-    if (!activeComanda) return;
+    const targetComandaId = isMultiComandaMode 
+      ? (selectedComandas.length > 0 ? selectedComandas[0].id : null)
+      : activeComanda?.id;
+    
+    if (!targetComandaId) {
+      if (isMultiComandaMode) {
+        showNotification('Adicione pelo menos uma comanda primeiro!', 'error');
+      }
+      return;
+    }
     
     await handleAddItem({
-      comanda_id: activeComanda.id,
+      comanda_id: targetComandaId,
       produto_id: null,
       quantidade: 1,
       preco_unitario: valor,
       descricao: 'Prato por Quilo',
       tipo_item: 'prato_por_quilo'
     });
-    showNotification(`Prato de ${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} adicionado!`, 'success');
   };
 
   const handleAddMarmitex = async (valor: number) => {
-    if (!activeComanda) return;
+    const targetComandaId = isMultiComandaMode 
+      ? (selectedComandas.length > 0 ? selectedComandas[0].id : null)
+      : activeComanda?.id;
+    
+    if (!targetComandaId) {
+      if (isMultiComandaMode) {
+        showNotification('Adicione pelo menos uma comanda primeiro!', 'error');
+      }
+      return;
+    }
     
     await handleAddItem({
-      comanda_id: activeComanda.id,
+      comanda_id: targetComandaId,
       produto_id: null,
       quantidade: 1,
       preco_unitario: valor,
       descricao: 'Marmitex',
       tipo_item: 'marmitex'
     });
-    showNotification(`Marmitex de ${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} adicionado!`, 'success');
   };
 
   const handleRemoveItem = async (comandaItemId: number) => {
