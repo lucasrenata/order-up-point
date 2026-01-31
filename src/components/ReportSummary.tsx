@@ -13,6 +13,8 @@ interface ReportSummaryProps {
     pratoPorQuiloAlmoco: number;
     pratoPorQuiloJantar: number;
     totalMarmitex: number;
+    totalMarmitexAlmoco: number;
+    totalMarmitexJantar: number;
     totalDescontos: number;
     totalBruto: number;
     totalLiquido: number;
@@ -75,7 +77,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -131,7 +133,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Almoço (10h-15h)</p>
+              <p className="text-sm text-gray-600">Almoço (10h-16h30)</p>
               <p className="text-2xl font-bold text-amber-600">{data.pratoPorQuiloAlmoco}</p>
               <p className="text-xs text-gray-500 mt-1">pratos por quilo</p>
             </div>
@@ -157,9 +159,22 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Marmitex</p>
-              <p className="text-2xl font-bold text-indigo-600">{data.totalMarmitex}</p>
-              <p className="text-xs text-gray-500 mt-1">unidades vendidas</p>
+              <p className="text-sm text-gray-600">Marmitex Almoço</p>
+              <p className="text-2xl font-bold text-amber-600">{data.totalMarmitexAlmoco}</p>
+              <p className="text-xs text-gray-500 mt-1">10h às 16h30</p>
+            </div>
+            <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+              <Box className="text-amber-600" size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Marmitex Jantar</p>
+              <p className="text-2xl font-bold text-indigo-600">{data.totalMarmitexJantar}</p>
+              <p className="text-xs text-gray-500 mt-1">17h às 23h</p>
             </div>
             <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
               <Box className="text-indigo-600" size={24} />

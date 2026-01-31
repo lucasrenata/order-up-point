@@ -16,6 +16,8 @@ interface ReportData {
   pratoPorQuiloAlmoco: number;
   pratoPorQuiloJantar: number;
   totalMarmitex: number;
+  totalMarmitexAlmoco: number;
+  totalMarmitexJantar: number;
   totalDescontos: number;
   totalBruto: number;
   totalLiquido: number;
@@ -121,37 +123,73 @@ export const useReportData = (selectedDate: string) => {
         return parseInt(brazilianTime, 10);
       };
 
+      // Função auxiliar para obter hora e minuto brasileiros
+      const getBrazilianTime = (dateString: string): { hora: number; minuto: number } => {
+        const date = new Date(dateString);
+        const horaStr = date.toLocaleString('pt-BR', { 
+          timeZone: 'America/Sao_Paulo', 
+          hour: '2-digit', 
+          hour12: false 
+        });
+        const minutoStr = date.toLocaleString('pt-BR', { 
+          timeZone: 'America/Sao_Paulo', 
+          minute: '2-digit'
+        });
+        return { hora: parseInt(horaStr, 10), minuto: parseInt(minutoStr, 10) };
+      };
+
+      // Função para verificar se está no período do almoço (10:00 - 16:30)
+      const isAlmoco = (dateString: string): boolean => {
+        const { hora, minuto } = getBrazilianTime(dateString);
+        const totalMinutos = hora * 60 + minuto;
+        // 10:00 = 600 minutos, 16:30 = 990 minutos
+        return totalMinutos >= 600 && totalMinutos <= 990;
+      };
+
+      // Função para verificar se está no período do jantar (17:00 - 23:59)
+      const isJantar = (dateString: string): boolean => {
+        const { hora } = getBrazilianTime(dateString);
+        return hora >= 17 && hora <= 23;
+      };
+
       // Contar QUANTIDADE total de "Prato por Quilo" vendidos (soma das quantidades)
       let pratoPorQuilo = 0;
-      let pratoPorQuiloAlmoco = 0; // 10:00 - 15:00
+      let pratoPorQuiloAlmoco = 0; // 10:00 - 16:30
       let pratoPorQuiloJantar = 0; // 17:00 - 23:59
 
+      // Contar QUANTIDADE total de "Marmitex" vendidos (soma das quantidades)
+      let totalMarmitex = 0;
+      let totalMarmitexAlmoco = 0; // 10:00 - 16:30
+      let totalMarmitexJantar = 0; // 17:00 - 23:59
+
       comandas?.forEach(comanda => {
+        // Prato por Quilo
         const pratosQuilo = comanda.comanda_itens?.filter(item => 
           item.tipo_item === 'prato_por_quilo' || (item.tipo_item === undefined && item.produto_id === null && item.descricao === 'Prato por Quilo')
         ) || [];
         
-        const quantidadeTotal = pratosQuilo.reduce((sum, item) => sum + (item.quantidade || 1), 0);
-        pratoPorQuilo += quantidadeTotal;
+        const quantidadePratoQuilo = pratosQuilo.reduce((sum, item) => sum + (item.quantidade || 1), 0);
+        pratoPorQuilo += quantidadePratoQuilo;
+
+        // Marmitex
+        const marmitexItens = comanda.comanda_itens?.filter(item => 
+          item.tipo_item === 'marmitex' || (item.tipo_item === undefined && item.produto_id === null && item.descricao === 'Marmitex')
+        ) || [];
+        
+        const quantidadeMarmitex = marmitexItens.reduce((sum, item) => sum + (item.quantidade || 1), 0);
+        totalMarmitex += quantidadeMarmitex;
 
         // Verificar horário do pagamento para separar almoço/jantar
         if (comanda.data_pagamento) {
-          const hora = getBrazilianHour(comanda.data_pagamento);
-          if (hora >= 10 && hora < 15) {
-            pratoPorQuiloAlmoco += quantidadeTotal;
-          } else if (hora >= 17 && hora <= 23) {
-            pratoPorQuiloJantar += quantidadeTotal;
+          if (isAlmoco(comanda.data_pagamento)) {
+            pratoPorQuiloAlmoco += quantidadePratoQuilo;
+            totalMarmitexAlmoco += quantidadeMarmitex;
+          } else if (isJantar(comanda.data_pagamento)) {
+            pratoPorQuiloJantar += quantidadePratoQuilo;
+            totalMarmitexJantar += quantidadeMarmitex;
           }
         }
       });
-
-      // Contar QUANTIDADE total de "Marmitex" vendidos (soma das quantidades)
-      const totalMarmitex = comandas?.reduce((total, comanda) => {
-        const marmitex = comanda.comanda_itens?.filter(item => 
-          item.tipo_item === 'marmitex' || (item.tipo_item === undefined && item.produto_id === null && item.descricao === 'Marmitex')
-        ) || [];
-        return total + marmitex.reduce((sum, item) => sum + (item.quantidade || 1), 0);
-      }, 0) || 0;
 
       console.log('📈 ===== ESTATÍSTICAS FINAIS =====');
       console.log('📅 Data:', formatBrazilianDateDirect(date + 'T00:00:00Z'));
@@ -232,6 +270,8 @@ export const useReportData = (selectedDate: string) => {
         pratoPorQuiloAlmoco,
         pratoPorQuiloJantar,
         totalMarmitex,
+        totalMarmitexAlmoco,
+        totalMarmitexJantar,
         totalDescontos,
         totalBruto,
         totalLiquido,
