@@ -1,5 +1,5 @@
 import React from 'react';
-import { DollarSign, Package, TrendingUp, Award, UtensilsCrossed, Box } from 'lucide-react';
+import { DollarSign, Package, TrendingUp, Award, UtensilsCrossed, Box, Sun, Moon } from 'lucide-react';
 import { formatBrazilianDateDirect } from '../utils/dateUtils';
 
 interface ReportSummaryProps {
@@ -10,6 +10,8 @@ interface ReportSummaryProps {
     comandas: any[];
     formasPagamento: { forma: string; quantidade: number; icon: string; color: string }[];
     pratoPorQuilo: number;
+    pratoPorQuiloAlmoco: number;
+    pratoPorQuiloJantar: number;
     totalMarmitex: number;
     totalDescontos: number;
     totalBruto: number;
@@ -73,7 +75,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -129,12 +131,25 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Prato por Quilo</p>
-              <p className="text-2xl font-bold text-pink-600">{data.pratoPorQuilo}</p>
-              <p className="text-xs text-gray-500 mt-1">refeições vendidas</p>
+              <p className="text-sm text-gray-600">Almoço (10h-15h)</p>
+              <p className="text-2xl font-bold text-amber-600">{data.pratoPorQuiloAlmoco}</p>
+              <p className="text-xs text-gray-500 mt-1">pratos por quilo</p>
             </div>
-            <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
-              <UtensilsCrossed className="text-pink-600" size={24} />
+            <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+              <Sun className="text-amber-600" size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Jantar (17h-23h)</p>
+              <p className="text-2xl font-bold text-indigo-600">{data.pratoPorQuiloJantar}</p>
+              <p className="text-xs text-gray-500 mt-1">pratos por quilo</p>
+            </div>
+            <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+              <Moon className="text-indigo-600" size={24} />
             </div>
           </div>
         </div>
