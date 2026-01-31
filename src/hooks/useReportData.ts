@@ -13,6 +13,8 @@ interface ReportData {
   ticketMedio: number;
   formasPagamento: { forma: string; quantidade: number; icon: string; color: string }[];
   pratoPorQuilo: number;
+  pratoPorQuiloAlmoco: number;
+  pratoPorQuiloJantar: number;
   totalMarmitex: number;
   totalDescontos: number;
   totalBruto: number;
@@ -108,13 +110,40 @@ export const useReportData = (selectedDate: string) => {
       
       const ticketMedio = comandas?.length ? totalVendas / comandas.length : 0;
 
+      // Função auxiliar para extrair hora brasileira de uma data UTC
+      const getBrazilianHour = (dateString: string): number => {
+        const date = new Date(dateString);
+        const brazilianTime = date.toLocaleString('pt-BR', { 
+          timeZone: 'America/Sao_Paulo', 
+          hour: '2-digit', 
+          hour12: false 
+        });
+        return parseInt(brazilianTime, 10);
+      };
+
       // Contar QUANTIDADE total de "Prato por Quilo" vendidos (soma das quantidades)
-      const pratoPorQuilo = comandas?.reduce((total, comanda) => {
+      let pratoPorQuilo = 0;
+      let pratoPorQuiloAlmoco = 0; // 10:00 - 15:00
+      let pratoPorQuiloJantar = 0; // 17:00 - 23:59
+
+      comandas?.forEach(comanda => {
         const pratosQuilo = comanda.comanda_itens?.filter(item => 
           item.tipo_item === 'prato_por_quilo' || (item.tipo_item === undefined && item.produto_id === null && item.descricao === 'Prato por Quilo')
         ) || [];
-        return total + pratosQuilo.reduce((sum, item) => sum + (item.quantidade || 1), 0);
-      }, 0) || 0;
+        
+        const quantidadeTotal = pratosQuilo.reduce((sum, item) => sum + (item.quantidade || 1), 0);
+        pratoPorQuilo += quantidadeTotal;
+
+        // Verificar horário do pagamento para separar almoço/jantar
+        if (comanda.data_pagamento) {
+          const hora = getBrazilianHour(comanda.data_pagamento);
+          if (hora >= 10 && hora < 15) {
+            pratoPorQuiloAlmoco += quantidadeTotal;
+          } else if (hora >= 17 && hora <= 23) {
+            pratoPorQuiloJantar += quantidadeTotal;
+          }
+        }
+      });
 
       // Contar QUANTIDADE total de "Marmitex" vendidos (soma das quantidades)
       const totalMarmitex = comandas?.reduce((total, comanda) => {
@@ -200,6 +229,8 @@ export const useReportData = (selectedDate: string) => {
         ticketMedio,
         formasPagamento,
         pratoPorQuilo,
+        pratoPorQuiloAlmoco,
+        pratoPorQuiloJantar,
         totalMarmitex,
         totalDescontos,
         totalBruto,
