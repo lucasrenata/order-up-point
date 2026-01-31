@@ -314,6 +314,23 @@ export const useGerenciamentoCaixa = () => {
     }
   };
 
+  // Deletar registro do caixa (libera o caixa para novo turno)
+  const deletarRegistroCaixa = async (caixaId: number) => {
+    try {
+      const { error } = await supabase
+        .from('caixas')
+        .delete()
+        .eq('id', caixaId);
+
+      if (error) throw error;
+
+      console.log(`✅ Registro do caixa ${caixaId} deletado - caixa disponível para novo turno`);
+    } catch (error: any) {
+      console.error('❌ Erro ao deletar registro do caixa:', error);
+      throw error;
+    }
+  };
+
   // Adicionar retirada
   const adicionarRetirada = async (
     caixaId: number,
@@ -603,6 +620,7 @@ export const useGerenciamentoCaixa = () => {
     fetchCaixas,
     abrirCaixa,
     fecharCaixa,
+    deletarRegistroCaixa,
     adicionarRetirada,
     adicionarEntrada,
     adicionarPagamentoReserva,

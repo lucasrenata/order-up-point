@@ -56,6 +56,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
     fetchCaixas,
     abrirCaixa,
     fecharCaixa,
+    deletarRegistroCaixa,
     adicionarRetirada,
     adicionarEntrada,
     adicionarPagamentoReserva,
@@ -236,16 +237,18 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // 4. Fechar o caixa (atualizar status)
-      console.log('🔒 Fechando caixa SEM deletar dados - ID:', selectedCaixa.id);
+      console.log('🔒 Fechando caixa - ID:', selectedCaixa.id);
       await fecharCaixa(selectedCaixa.id);
       console.log('✅ Caixa fechado - Dados persistirão por 7 dias na aba Movimentações');
 
-      // NOTA: Dados NÃO são mais deletados automaticamente
-      // Os dados persistem por 7 dias e podem ser deletados manualmente na aba Movimentações
+      // 5. Deletar o registro do caixa para liberar para novo turno
+      console.log('🗑️ Deletando registro do caixa para liberar para novo turno...');
+      await deletarRegistroCaixa(selectedCaixa.id);
+      console.log('✅ Registro deletado - Caixa disponível para abertura');
 
       toast({
         title: '✅ Caixa fechado',
-        description: 'Relatório gerado. Dados salvos por 7 dias.',
+        description: 'Relatório gerado. Caixa disponível para novo turno.',
       });
 
       // 6. Voltar para lista
