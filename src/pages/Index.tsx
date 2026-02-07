@@ -378,7 +378,7 @@ export default function Index() {
 
   const handleActivateComanda = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && comandaCodeInput.trim() !== '') {
-      const comandaId = comandaCodeInput.trim();
+      const comandaId = comandaCodeInput.trim().toUpperCase();
       
       if (isMultiComandaMode) {
         await addComandaToSelection(comandaId);
