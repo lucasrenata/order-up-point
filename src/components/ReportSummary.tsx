@@ -15,6 +15,9 @@ interface ReportSummaryProps {
     totalMarmitex: number;
     totalMarmitexAlmoco: number;
     totalMarmitexJantar: number;
+    refeicaoLivre: number;
+    refeicaoLivreAlmoco: number;
+    refeicaoLivreJantar: number;
     totalDescontos: number;
     totalBruto: number;
     totalLiquido: number;
@@ -77,7 +80,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-8">
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -178,6 +181,34 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate
             </div>
             <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
               <Box className="text-indigo-600" size={24} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-8">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Refeição Livre Almoço</p>
+              <p className="text-2xl font-bold text-amber-600">{data.refeicaoLivreAlmoco}</p>
+              <p className="text-xs text-gray-500 mt-1">10h às 16h30</p>
+            </div>
+            <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+              <UtensilsCrossed className="text-amber-600" size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Refeição Livre Jantar</p>
+              <p className="text-2xl font-bold text-indigo-600">{data.refeicaoLivreJantar}</p>
+              <p className="text-xs text-gray-500 mt-1">17h às 23h</p>
+            </div>
+            <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+              <UtensilsCrossed className="text-indigo-600" size={24} />
             </div>
           </div>
         </div>
