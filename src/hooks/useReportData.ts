@@ -18,6 +18,9 @@ interface ReportData {
   totalMarmitex: number;
   totalMarmitexAlmoco: number;
   totalMarmitexJantar: number;
+  refeicaoLivre: number;
+  refeicaoLivreAlmoco: number;
+  refeicaoLivreJantar: number;
   totalDescontos: number;
   totalBruto: number;
   totalLiquido: number;
@@ -159,8 +162,12 @@ export const useReportData = (selectedDate: string) => {
 
       // Contar QUANTIDADE total de "Marmitex" vendidos (soma das quantidades)
       let totalMarmitex = 0;
-      let totalMarmitexAlmoco = 0; // 10:00 - 16:30
-      let totalMarmitexJantar = 0; // 17:00 - 23:59
+      let totalMarmitexAlmoco = 0;
+      let totalMarmitexJantar = 0;
+
+      let refeicaoLivre = 0;
+      let refeicaoLivreAlmoco = 0;
+      let refeicaoLivreJantar = 0;
 
       comandas?.forEach(comanda => {
         // Prato por Quilo
@@ -179,14 +186,24 @@ export const useReportData = (selectedDate: string) => {
         const quantidadeMarmitex = marmitexItens.reduce((sum, item) => sum + (item.quantidade || 1), 0);
         totalMarmitex += quantidadeMarmitex;
 
+        // Refeição Livre
+        const refeicaoLivreItens = comanda.comanda_itens?.filter(item => 
+          item.tipo_item === 'refeicao_livre' || (item.tipo_item === undefined && item.produto_id === null && item.descricao === 'Refeição Livre')
+        ) || [];
+        
+        const quantidadeRefeicaoLivre = refeicaoLivreItens.reduce((sum, item) => sum + (item.quantidade || 1), 0);
+        refeicaoLivre += quantidadeRefeicaoLivre;
+
         // Verificar horário do pagamento para separar almoço/jantar
         if (comanda.data_pagamento) {
           if (isAlmoco(comanda.data_pagamento)) {
             pratoPorQuiloAlmoco += quantidadePratoQuilo;
             totalMarmitexAlmoco += quantidadeMarmitex;
+            refeicaoLivreAlmoco += quantidadeRefeicaoLivre;
           } else if (isJantar(comanda.data_pagamento)) {
             pratoPorQuiloJantar += quantidadePratoQuilo;
             totalMarmitexJantar += quantidadeMarmitex;
+            refeicaoLivreJantar += quantidadeRefeicaoLivre;
           }
         }
       });
@@ -272,6 +289,9 @@ export const useReportData = (selectedDate: string) => {
         totalMarmitex,
         totalMarmitexAlmoco,
         totalMarmitexJantar,
+        refeicaoLivre,
+        refeicaoLivreAlmoco,
+        refeicaoLivreJantar,
         totalDescontos,
         totalBruto,
         totalLiquido,
