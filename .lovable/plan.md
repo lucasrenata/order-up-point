@@ -1,74 +1,58 @@
 
-## Plano de Correção: Deletar Registro do Caixa Após Fechamento
 
-### Problema Identificado
+## Adicionar Quadro de Resumo no Topo do PDF de Relatório de Vendas
 
-Quando o caixa é fechado, o sistema apenas atualiza o `status` para 'fechado', mas **não deleta o registro** da tabela `caixas`. Isso causa:
+### Objetivo
+Incluir no PDF de vendas (`src/utils/pdfGenerator.ts`) todas as informações que aparecem nos cards da tela de relatórios: faturamento, descontos, comandas, itens, ticket médio, pratos por quilo (almoço/jantar), marmitex (almoço/jantar) e refeição livre (almoço/jantar).
 
-1. Ao buscar caixas (`fetchCaixas`), o sistema encontra o registro fechado como "mais recente"
-2. O caixa aparece como "Fechado" em vez de estar disponível para abrir novamente
-3. Acumulação de registros antigos na tabela `caixas`
-
-### Fluxo Atual vs Esperado
-
-```text
-ATUAL:
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│ Fechar Caixa    │ --> │ Gerar PDF       │ --> │ status='fechado'│
-│                 │     │                 │     │ (registro fica) │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                                                        │
-                                                        v
-                                               Caixa aparece fechado
-
-ESPERADO:
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│ Fechar Caixa    │ --> │ Gerar PDF       │ --> │ DELETE registro │
-│                 │     │                 │     │ da tabela caixas│
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                                                        │
-                                                        v
-                                               Caixa disponível para abrir
-```
-
----
-
-### Arquivos a Modificar
+### Arquivo a Modificar
 
 | Arquivo | Modificação |
 |---------|-------------|
-| `src/hooks/useGerenciamentoCaixa.ts` | Criar função `deletarRegistroCaixa` para deletar o registro do caixa da tabela `caixas` |
-| `src/components/CaixaModal.tsx` | Atualizar `handleConfirmarFechamento` para deletar o registro após gerar o PDF |
-
----
+| `src/utils/pdfGenerator.ts` | Atualizar interface `ReportData` e adicionar quadro visual no topo do PDF |
 
 ### Detalhes Técnicos
 
-#### 1. Nova função no hook (`useGerenciamentoCaixa.ts`)
+#### 1. Atualizar a interface `ReportData`
 
-Criar `deletarRegistroCaixa(caixaId)` que:
-- Deleta o registro específico da tabela `caixas` por ID
-- Retorna erro se falhar
+Adicionar os campos que faltam para receber os dados dos cards:
+- `pratoPorQuilo`, `pratoPorQuiloAlmoco`, `pratoPorQuiloJantar`
+- `totalMarmitex`, `totalMarmitexAlmoco`, `totalMarmitexJantar`
+- `refeicaoLivre`, `refeicaoLivreAlmoco`, `refeicaoLivreJantar`
 
-#### 2. Atualizar `handleConfirmarFechamento` (`CaixaModal.tsx`)
+#### 2. Criar quadro visual no PDF
 
-Após gerar o PDF e antes de atualizar a view:
-1. Manter `fecharCaixa()` (atualiza status - necessário para consistência dos dados de vendas)
-2. Adicionar chamada para `deletarRegistroCaixa()` para remover o registro da tabela caixas
-3. Isso libera o caixa para ser aberto novamente
+Após o cabeçalho (título, data, etc.), desenhar um bloco de resumo organizado em seções usando retângulos com `pdf.rect()` e texto organizado:
 
----
+```text
+┌──────────────────────────────────────────────────────────────┐
+│  RESUMO DO PERIODO                                          │
+├──────────────┬──────────────┬──────────────┬────────────────┤
+│ Fat. Bruto   │ Descontos    │ Fat. Líquido │                │
+│ R$ X.XXX,XX  │ R$ XXX,XX    │ R$ X.XXX,XX  │                │
+├──────────────┼──────────────┼──────────────┼────────────────┤
+│ Total Vendas │ Comandas     │ Total Itens  │ Ticket Medio   │
+│ R$ X.XXX,XX  │ XX           │ XX           │ R$ XX,XX       │
+├──────────────┼──────────────┼──────────────┼────────────────┤
+│ Almoco PQ    │ Jantar PQ    │ Marmitex Alm │ Marmitex Jan   │
+│ XX           │ XX           │ XX           │ XX             │
+├──────────────┼──────────────┼──────────────┼────────────────┤
+│ Ref.Livre Alm│ Ref.Livre Jan│              │                │
+│ XX           │ XX           │              │                │
+└──────────────┴──────────────┴──────────────┴────────────────┘
+```
 
-### Comportamento Esperado Após Correção
+Cada "célula" será desenhada com:
+- `pdf.rect(x, y, w, h)` para bordas
+- `pdf.setFontSize(8)` para rótulos (ex: "Faturamento Bruto")
+- `pdf.setFontSize(12)` + bold para valores (ex: "R$ 1.500,00")
+- Fundo cinza claro (`pdf.setFillColor(245, 245, 245)`) para destaque visual
 
-1. Usuário clica em "Fechar Caixa"
-2. Sistema gera PDF de fechamento
-3. Sistema atualiza status do caixa para 'fechado' (dados de vendas mantidos por 7 dias)
-4. Sistema deleta o registro do caixa da tabela `caixas`
-5. Ao reabrir o modal de caixas, o caixa aparece disponível para abrir
+#### 3. Reposicionar conteúdo existente
 
----
+O resumo em formato texto atual (linhas 69-85) será substituído pelo quadro visual. O restante do PDF (formas de pagamento, detalhamento das vendas) continua abaixo com `yPos` ajustado.
 
-### Nota Importante
+### Resultado Esperado
 
-Os dados de vendas (comandas, itens, retiradas, entradas, pagamentos de reserva) continuam **mantidos por 7 dias** conforme o requisito existente. O que será deletado é apenas o **registro do operador/caixa** na tabela `caixas`, permitindo que outro operador abra um novo turno naquele caixa.
+O PDF terá no topo, logo após o cabeçalho, um quadro visual organizado com todas as métricas que aparecem na tela de relatórios, espelhando os cards vistos na imagem de referência.
+
