@@ -6,6 +6,7 @@ import { PaymentModal } from '../components/PaymentModal';
 import { OrderSummary } from '../components/OrderSummary';
 import { InputPanel } from '../components/InputPanel';
 import { CaixaModal } from '../components/CaixaModal';
+import { OldDataAlertModal } from '../components/OldDataAlertModal';
 import { supabase } from '../lib/supabase';
 import { Comanda, ComandaItem, Product, PaymentSplit } from '../types/types';
 import { useStockManager } from '../hooks/useStockManager';
@@ -24,6 +25,7 @@ export default function Index() {
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showCaixaModal, setShowCaixaModal] = useState(false);
+  const [oldDataAlert, setOldDataAlert] = useState<{ quantidade: number; valorTotal: number; dataLimite: string } | null>(null);
 
   const showNotification = (message: string, type: 'info' | 'error' | 'success' = 'info') => {
     setNotification({ message, type });
@@ -45,6 +47,39 @@ export default function Index() {
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  // Check for old data on mount
+  useEffect(() => {
+    const checkOldData = async () => {
+      try {
+        const dataLimite = new Date();
+        dataLimite.setDate(dataLimite.getDate() - 7);
+        dataLimite.setHours(0, 0, 0, 0);
+
+        const { data: comandasAntigas, error } = await supabase
+          .from('comandas' as any)
+          .select('id, total')
+          .eq('status', 'paga')
+          .lt('data_pagamento', dataLimite.toISOString()) as any;
+
+        if (error) return;
+
+        const quantidade = comandasAntigas?.length || 0;
+        if (quantidade > 0) {
+          const valorTotal = comandasAntigas.reduce((acc: number, c: any) => acc + (c.total || 0), 0);
+          setOldDataAlert({
+            quantidade,
+            valorTotal,
+            dataLimite: dataLimite.toISOString().split('T')[0]
+          });
+        }
+      } catch (e) {
+        console.error('Erro ao verificar dados antigos:', e);
+      }
+    };
+
+    checkOldData();
+  }, []);
 
   const reloadActiveComanda = async (comandaId: number) => {
     const { data, error } = await supabase
@@ -724,6 +759,15 @@ export default function Index() {
         open={showCaixaModal} 
         onOpenChange={setShowCaixaModal} 
       />
+
+      {oldDataAlert && (
+        <OldDataAlertModal
+          quantidade={oldDataAlert.quantidade}
+          valorTotal={oldDataAlert.valorTotal}
+          dataLimite={oldDataAlert.dataLimite}
+          onClose={() => setOldDataAlert(null)}
+        />
+      )}
     </div>
   );
 }
