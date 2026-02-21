@@ -51,7 +51,7 @@ export interface ComandaItem {
 }
 
 export interface PaymentSplit {
-  forma_pagamento: 'dinheiro' | 'pix' | 'debito' | 'credito';
+  forma_pagamento: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'voucher';
   valor: number;
   troco?: number;
 }
@@ -66,7 +66,7 @@ export interface Comanda {
   desconto_percentual?: number | null;
   motivo_desconto?: string | null;
   data_pagamento: string | null;
-  forma_pagamento?: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'multiplo' | null;
+  forma_pagamento?: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'voucher' | 'multiplo' | null;
   pagamentos_divididos?: PaymentSplit[];
   comanda_itens: ComandaItem[];
   caixa_id?: number | null;
@@ -106,7 +106,7 @@ export interface CaixaPagamentoReserva {
   created_at: string;
   caixa_id: number;
   valor: number;
-  forma_pagamento: 'dinheiro' | 'pix' | 'debito' | 'credito';
+  forma_pagamento: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'voucher';
   cliente_nome: string;
   observacao?: string;
   data_pagamento: string;

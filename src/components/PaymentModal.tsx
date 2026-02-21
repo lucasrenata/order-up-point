@@ -11,7 +11,7 @@ interface PaymentModalProps {
   onClose: () => void;
   onConfirmPayment: (
     total: number, 
-    formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'multiplo',
+    formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'voucher' | 'multiplo',
     paymentSplits?: PaymentSplit[],
     caixaId?: number,
     desconto?: number,
@@ -21,7 +21,7 @@ interface PaymentModalProps {
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComandas = [], isMultiMode = false, onClose, onConfirmPayment }) => {
-  const [selectedPayment, setSelectedPayment] = useState<'dinheiro' | 'pix' | 'debito' | 'credito' | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<'dinheiro' | 'pix' | 'debito' | 'credito' | 'voucher' | null>(null);
   const [showCashModal, setShowCashModal] = useState(false);
   const [cashReceived, setCashReceived] = useState('');
   const [isSubmittingCash, setIsSubmittingCash] = useState(false);
@@ -30,7 +30,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
   // Estados para modo múltiplas formas
   const [isMultiPaymentMode, setIsMultiPaymentMode] = useState(false);
   const [paymentSplits, setPaymentSplits] = useState<PaymentSplit[]>([]);
-  const [currentPaymentForm, setCurrentPaymentForm] = useState<'dinheiro' | 'pix' | 'debito' | 'credito' | null>(null);
+  const [currentPaymentForm, setCurrentPaymentForm] = useState<'dinheiro' | 'pix' | 'debito' | 'credito' | 'voucher' | null>(null);
   const [currentPaymentValue, setCurrentPaymentValue] = useState('');
   const [showValueInput, setShowValueInput] = useState(false);
   
@@ -192,9 +192,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ comanda, multiComand
     { id: 'pix', label: 'PIX', icon: Smartphone, color: 'hover:bg-blue-50' },
     { id: 'debito', label: 'Cartão Débito', icon: CreditCard, color: 'hover:bg-purple-50' },
     { id: 'credito', label: 'Cartão Crédito', icon: CreditCard, color: 'hover:bg-orange-50' },
+    { id: 'voucher', label: 'Voucher', icon: CreditCard, color: 'hover:bg-teal-50' },
   ];
 
-  const handlePaymentSelection = (paymentId: 'dinheiro' | 'pix' | 'debito' | 'credito') => {
+  const handlePaymentSelection = (paymentId: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'voucher') => {
     if (isMultiPaymentMode) {
       setCurrentPaymentForm(paymentId);
       setShowValueInput(true);

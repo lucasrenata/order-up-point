@@ -86,6 +86,8 @@ export const generatePDFFechamentoCaixa = async (dados: DadosFechamentoCaixa): P
     doc.text(`  Débito: R$ ${(dados.vendasPorForma.debito || 0).toFixed(2)}`, 20, y);
     y += 5;
     doc.text(`  Crédito: R$ ${(dados.vendasPorForma.credito || 0).toFixed(2)}`, 20, y);
+    y += 5;
+    doc.text(`  Voucher: R$ ${(dados.vendasPorForma.voucher || 0).toFixed(2)}`, 20, y);
     y += 7;
 
     const totalVendas = Object.values(dados.vendasPorForma).reduce((acc, val) => acc + val, 0);
@@ -165,6 +167,7 @@ export const generatePDFFechamentoCaixa = async (dados: DadosFechamentoCaixa): P
             pix: 'PIX',
             debito: 'Débito',
             credito: 'Crédito',
+            voucher: 'Voucher',
           };
           pagamento = formaMap[comanda.forma_pagamento || ''] || comanda.forma_pagamento || '';
         }
@@ -254,6 +257,7 @@ export const generatePDFFechamentoCaixa = async (dados: DadosFechamentoCaixa): P
           pix: 'PIX',
           debito: 'Débito',
           credito: 'Crédito',
+          voucher: 'Voucher',
         };
         const forma = formaMap[pagamento.forma_pagamento];
         doc.text(`${pagamento.cliente_nome} - R$ ${pagamento.valor.toFixed(2)} (${forma})`, 14, y);
