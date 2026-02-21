@@ -116,6 +116,7 @@ export const generatePDFReport = async (data: ReportData, selectedDate: string) 
           case 'pix': return 'Pix';
           case 'debito': return 'Débito';
           case 'credito': return 'Crédito';
+          case 'voucher': return 'Voucher';
           default: return 'Desconhecido';
         }
       });
@@ -126,6 +127,7 @@ export const generatePDFReport = async (data: ReportData, selectedDate: string) 
       case 'pix': return 'Pix';
       case 'debito': return 'Débito';
       case 'credito': return 'Crédito';
+      case 'voucher': return 'Voucher';
       default: return 'Não informado';
     }
   };

@@ -77,7 +77,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
   const [valorEntrada, setValorEntrada] = useState('');
   const [observacaoEntrada, setObservacaoEntrada] = useState('');
   const [valorReserva, setValorReserva] = useState('');
-  const [formaPagamentoReserva, setFormaPagamentoReserva] = useState<'dinheiro' | 'pix' | 'debito' | 'credito'>('dinheiro');
+  const [formaPagamentoReserva, setFormaPagamentoReserva] = useState<'dinheiro' | 'pix' | 'debito' | 'credito' | 'voucher'>('dinheiro');
   const [clienteNomeReserva, setClienteNomeReserva] = useState('');
   const [observacaoReserva, setObservacaoReserva] = useState('');
 
@@ -557,7 +557,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
                 <Label htmlFor="forma-pagamento-reserva">Forma de Pagamento *</Label>
                 <Select
                   value={formaPagamentoReserva}
-                  onValueChange={(value: 'dinheiro' | 'pix' | 'debito' | 'credito') => 
+                  onValueChange={(value: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'voucher') => 
                     setFormaPagamentoReserva(value)
                   }
                 >
@@ -569,6 +569,7 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
                     <SelectItem value="pix">📱 PIX</SelectItem>
                     <SelectItem value="debito">💳 Débito</SelectItem>
                     <SelectItem value="credito">🏦 Crédito</SelectItem>
+                    <SelectItem value="voucher">🎟️ Voucher</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -699,19 +700,23 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
               ) : (
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {pagamentosReserva.map((pagamento) => {
-                    const formaIcon = {
+                    const formaIcon: Record<string, string> = {
                       dinheiro: '💵',
                       pix: '📱',
                       debito: '💳',
                       credito: '🏦',
-                    }[pagamento.forma_pagamento];
+                      voucher: '🎟️',
+                    };
+                    const icon = formaIcon[pagamento.forma_pagamento] || '❓';
                     
-                    const formaColor = {
+                    const formaColor: Record<string, string> = {
                       dinheiro: 'text-green-600',
                       pix: 'text-blue-600',
                       debito: 'text-purple-600',
                       credito: 'text-orange-600',
-                    }[pagamento.forma_pagamento];
+                      voucher: 'text-teal-600',
+                    };
+                    const color = formaColor[pagamento.forma_pagamento] || 'text-gray-600';
 
                     return (
                       <div
@@ -723,8 +728,8 @@ export const CaixaModal = ({ open, onOpenChange }: CaixaModalProps) => {
                             <p className="text-sm font-semibold text-indigo-900">
                               👤 {pagamento.cliente_nome}
                             </p>
-                            <p className={`text-sm font-semibold ${formaColor}`}>
-                              {formaIcon} R$ {pagamento.valor.toFixed(2)}
+                            <p className={`text-sm font-semibold ${color}`}>
+                              {icon} R$ {pagamento.valor.toFixed(2)}
                             </p>
                           </div>
                           <span className="text-xs text-muted-foreground">

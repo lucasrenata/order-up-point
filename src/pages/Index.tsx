@@ -507,7 +507,7 @@ export default function Index() {
 
   const handleConfirmPayment = async (
     total: number, 
-    formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'multiplo',
+    formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'voucher' | 'multiplo',
     paymentSplits?: PaymentSplit[],
     caixaId?: number,
     desconto?: number,

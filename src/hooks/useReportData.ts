@@ -226,6 +226,8 @@ export const useReportData = (selectedDate: string) => {
             return { icon: '💳', text: 'Cartão Débito', color: 'text-purple-600' };
           case 'credito':
             return { icon: '🏦', text: 'Cartão Crédito', color: 'text-orange-600' };
+          case 'voucher':
+            return { icon: '🎟️', text: 'Voucher', color: 'text-teal-600' };
           default:
             return { icon: '❓', text: 'Não informado', color: 'text-gray-600' };
         }

@@ -161,6 +161,7 @@ export const useGerenciamentoCaixa = () => {
         pix: 0,
         debito: 0,
         credito: 0,
+        voucher: 0,
       };
 
       comandasData?.forEach((comanda) => {
@@ -407,7 +408,7 @@ export const useGerenciamentoCaixa = () => {
   const adicionarPagamentoReserva = async (
     caixaId: number,
     valor: number,
-    formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito',
+    formaPagamento: 'dinheiro' | 'pix' | 'debito' | 'credito' | 'voucher',
     clienteNome: string,
     observacao?: string
   ) => {
@@ -518,6 +519,7 @@ export const useGerenciamentoCaixa = () => {
         pix: 0,
         debito: 0,
         credito: 0,
+        voucher: 0,
       };
 
       let totalComandasProcessadas = 0;

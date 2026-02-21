@@ -39,7 +39,7 @@ export const EditComandaModal: React.FC<EditComandaModalProps> = ({
   const [items, setItems] = useState<ComandaItem[]>([]);
   const [desconto, setDesconto] = useState(0);
   const [motivoDesconto, setMotivoDesconto] = useState('');
-  const [formaPagamento, setFormaPagamento] = useState<'dinheiro' | 'pix' | 'debito' | 'credito' | null>(null);
+  const [formaPagamento, setFormaPagamento] = useState<'dinheiro' | 'pix' | 'debito' | 'credito' | 'voucher' | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -189,7 +189,7 @@ export const EditComandaModal: React.FC<EditComandaModalProps> = ({
             <Label>Forma de Pagamento</Label>
             <Select
               value={formaPagamento || ''}
-              onValueChange={(value) => setFormaPagamento(value as 'dinheiro' | 'pix' | 'debito' | 'credito')}
+              onValueChange={(value) => setFormaPagamento(value as 'dinheiro' | 'pix' | 'debito' | 'credito' | 'voucher')}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Selecione a forma de pagamento" />
@@ -199,6 +199,7 @@ export const EditComandaModal: React.FC<EditComandaModalProps> = ({
                 <SelectItem value="pix">📱 Pix</SelectItem>
                 <SelectItem value="debito">💳 Cartão Débito</SelectItem>
                 <SelectItem value="credito">🏦 Cartão Crédito</SelectItem>
+                <SelectItem value="voucher">🎟️ Voucher</SelectItem>
               </SelectContent>
             </Select>
           </div>
