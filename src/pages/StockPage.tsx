@@ -334,8 +334,8 @@ export default function StockPage() {
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
+          <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
             <Button
               variant="ghost"
               size="sm"
@@ -346,19 +346,19 @@ export default function StockPage() {
               Voltar
             </Button>
             <div className="flex items-center gap-2">
-              <Package className="w-8 h-8 text-primary" />
-              <h1 className="text-3xl font-bold text-foreground">Gerenciamento de Estoque</h1>
+              <Package className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+              <h1 className="text-xl sm:text-3xl font-bold text-foreground">Gerenciamento de Estoque</h1>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button 
               onClick={handleUpdateAllEmojis} 
               variant="outline"
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-xs sm:text-sm"
             >
               🔄 Corrigir Emojis
             </Button>
-            <Button onClick={() => setIsProductFormOpen(true)} className="flex items-center gap-2">
+            <Button onClick={() => setIsProductFormOpen(true)} className="flex items-center gap-2 text-xs sm:text-sm">
               <Plus className="w-4 h-4" />
               Novo Produto
             </Button>
@@ -366,7 +366,7 @@ export default function StockPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Total de Produtos</CardTitle>

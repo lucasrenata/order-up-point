@@ -659,76 +659,76 @@ export default function Index() {
       )}
 
       <main className="max-w-screen-2xl mx-auto">
-        <header className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-700 mb-2 flex items-center gap-2">
+        <header className="mb-4 sm:mb-6 flex flex-col gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h1 className="text-xl sm:text-3xl font-bold text-gray-700 flex items-center gap-2">
               🍽️ Parceria Com IA - PDV
             </h1>
-            <div className="relative">
-              <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input 
-                id="comanda-input"
-                type="text" 
-                value={comandaCodeInput} 
-                onChange={(e) => setComandaCodeInput(e.target.value)} 
-                onKeyDown={handleActivateComanda} 
-                placeholder={isMultiComandaMode 
-                  ? "Ler comandas para unir (pressione Enter após cada uma)" 
-                  : "Ler código da COMANDA ou 300 avulso"
-                }
-                className="w-full md:w-96 bg-white border border-gray-300 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                aria-label="Campo para inserir código da comanda"
-              />
+            <div className="grid grid-cols-2 sm:flex gap-2">
+              <button 
+                onClick={() => setShowCaixaModal(true)}
+                className="bg-yellow-500 text-white font-bold py-2 px-3 sm:py-3 sm:px-6 rounded-lg hover:bg-yellow-600 transition-colors flex items-center justify-center gap-1 sm:gap-2 shadow-lg text-xs sm:text-base"
+              >
+                <Wallet size={16} className="sm:w-[18px] sm:h-[18px]" />
+                Caixa
+              </button>
+              <button
+                onClick={() => {
+                  setIsMultiComandaMode(!isMultiComandaMode);
+                  if (!isMultiComandaMode) {
+                    setActiveComanda(null);
+                    showNotification('Modo múltiplas comandas ativado! Leia as comandas que deseja unir.', 'info');
+                  } else {
+                    setSelectedComandas([]);
+                    showNotification('Modo comanda única ativado.', 'info');
+                  }
+                }}
+                className={`
+                  font-bold py-2 px-3 sm:py-3 sm:px-6 rounded-lg transition-colors flex items-center justify-center gap-1 sm:gap-2 shadow-lg text-xs sm:text-base
+                  ${isMultiComandaMode 
+                    ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                    : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                  }
+                `}
+              >
+                <Receipt size={16} className="sm:w-[18px] sm:h-[18px]" />
+                {isMultiComandaMode ? 'Múltiplo: ON' : 'Múltiplo: OFF'}
+              </button>
+              <button 
+                onClick={() => navigate('/estoque')} 
+                className="bg-green-600 text-white font-bold py-2 px-3 sm:py-3 sm:px-6 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-1 sm:gap-2 shadow-lg text-xs sm:text-base"
+              >
+                <Package size={16} className="sm:w-[18px] sm:h-[18px]" />
+                Estoque
+              </button>
+              <button 
+                onClick={handleGenerateReport} 
+                className="bg-blue-600 text-white font-bold py-2 px-3 sm:py-3 sm:px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-1 sm:gap-2 shadow-lg text-xs sm:text-base"
+              >
+                <FileText size={16} className="sm:w-[18px] sm:h-[18px]" />
+                Relatório
+              </button>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setShowCaixaModal(true)}
-              className="bg-yellow-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-yellow-600 transition-colors flex items-center gap-2 shadow-lg"
-            >
-              <Wallet size={18} />
-              Caixa
-            </button>
-            <button
-              onClick={() => {
-                setIsMultiComandaMode(!isMultiComandaMode);
-                if (!isMultiComandaMode) {
-                  setActiveComanda(null);
-                  showNotification('Modo múltiplas comandas ativado! Leia as comandas que deseja unir.', 'info');
-                } else {
-                  setSelectedComandas([]);
-                  showNotification('Modo comanda única ativado.', 'info');
-                }
-              }}
-              className={`
-                font-bold py-3 px-6 rounded-lg transition-colors flex items-center gap-2 shadow-lg
-                ${isMultiComandaMode 
-                  ? 'bg-orange-600 text-white hover:bg-orange-700' 
-                  : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
-                }
-              `}
-            >
-              <Receipt size={18} />
-              {isMultiComandaMode ? 'Modo Múltiplo: ON' : 'Modo Múltiplo: OFF'}
-            </button>
-            <button 
-              onClick={() => navigate('/estoque')} 
-              className="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 shadow-lg"
-            >
-              <Package size={18} />
-              Estoque
-            </button>
-            <button 
-              onClick={handleGenerateReport} 
-              className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-lg"
-            >
-              <FileText size={18} />
-              Relatório
-            </button>
+          <div className="relative">
+            <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <input 
+              id="comanda-input"
+              type="text" 
+              value={comandaCodeInput} 
+              onChange={(e) => setComandaCodeInput(e.target.value)} 
+              onKeyDown={handleActivateComanda} 
+              placeholder={isMultiComandaMode 
+                ? "Ler comandas para unir (pressione Enter após cada uma)" 
+                : "Ler código da COMANDA ou 300 avulso"
+              }
+              className="w-full bg-white border border-gray-300 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+              aria-label="Campo para inserir código da comanda"
+            />
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: 'calc(100vh - 180px)' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:h-[calc(100vh-220px)]">
           <div className="lg:col-span-1">
             <InputPanel 
               produtos={produtos} 
