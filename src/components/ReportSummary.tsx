@@ -220,7 +220,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({ data, selectedDate
             <DollarSign className="text-green-500" size={20} />
             Formas de Pagamento - {displayDate}
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {data.formasPagamento.map((item, index) => (
               <div key={index} className="text-center p-4 bg-gray-50 rounded-lg">
                 <div className="text-2xl mb-2">{item.icon}</div>
